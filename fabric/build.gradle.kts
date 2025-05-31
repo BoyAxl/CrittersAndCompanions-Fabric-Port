@@ -1,6 +1,7 @@
 val mc_version: String by extra
 val geckolib_version: String by extra
 val porting_lib_version: String by extra
+val trinkets_version: String by extra
 
 fabric {
     dependOn(project(":common"))
@@ -13,4 +14,5 @@ fabric {
 
 dependencies {
     modImplementation("software.bernie.geckolib:geckolib-fabric-${mc_version}:${geckolib_version}")
+    modImplementation("dev.emi:trinkets:${trinkets_version}")
 }

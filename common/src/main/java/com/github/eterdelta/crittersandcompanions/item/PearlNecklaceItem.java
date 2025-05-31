@@ -10,6 +10,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.level.Level;
 
+import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Function;
@@ -30,7 +31,7 @@ public class PearlNecklaceItem extends Item {
                 .map(ItemStack::getItem)
                 .filter(it -> it instanceof PearlNecklaceItem)
                 .map(it -> (PearlNecklaceItem) it)
-                .findFirst();
+                .max(Comparator.comparing(PearlNecklaceItem::getLevel));
     }
 
     private final int level;

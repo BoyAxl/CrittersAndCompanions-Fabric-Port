@@ -42,5 +42,19 @@ subprojects {
                 includeGroup("top.theillusivec4.curios")
             }
         }
+
+        maven {
+            url = uri("https://maven.terraformersmc.com/")
+            content {
+                includeGroup("dev.emi")
+            }
+        }
+
+        maven {
+            url = uri("https://maven.ladysnake.org/releases")
+            content {
+                includeGroup("dev.onyxstudios.cardinal-components-api")
+            }
+        }
     }
 }
