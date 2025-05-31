@@ -1,5 +1,6 @@
 package com.github.eterdelta.crittersandcompanions.platform;
 
+import com.github.eterdelta.crittersandcompanions.compat.CuriosCompat;
 import com.github.eterdelta.crittersandcompanions.platform.service.IPlatformHelper;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.Registries;
@@ -8,14 +9,18 @@ import net.minecraft.sounds.SoundEvent;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.ai.attributes.Attribute;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.MobBucketItem;
 import net.minecraft.world.item.SpawnEggItem;
 import net.minecraft.world.level.material.Fluid;
 import net.minecraftforge.common.ForgeMod;
 import net.minecraftforge.common.ForgeSpawnEggItem;
+import net.minecraftforge.fml.ModList;
 
 import java.util.function.Supplier;
+import java.util.stream.Stream;
 
 public class ForgePlatformHelper implements IPlatformHelper {
 
@@ -42,6 +47,12 @@ public class ForgePlatformHelper implements IPlatformHelper {
     @Override
     public MobBucketItem createMobBucket(Supplier<? extends EntityType<? extends Mob>> entityType, Fluid fluid, SoundEvent emptySound, Item.Properties properties) {
         return new MobBucketItem(entityType, () -> fluid, () -> emptySound, properties);
+    }
+
+    @Override
+    public Stream<ItemStack> getAdditionalEquipment(Player player) {
+        if(ModList.get().isLoaded("curios")) return CuriosCompat.getEquipment(player);
+        return Stream.empty();
     }
 
 }

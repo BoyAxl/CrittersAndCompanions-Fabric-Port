@@ -1,15 +1,38 @@
 package com.github.eterdelta.crittersandcompanions.item;
 
+import com.github.eterdelta.crittersandcompanions.platform.Services;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.level.Level;
 
 import java.util.List;
+import java.util.Optional;
+import java.util.function.Function;
+import java.util.stream.Stream;
 
 public class PearlNecklaceItem extends Item {
+
+    private static Stream<ItemStack> getEquipment(Player player) {
+        return Stream.of(
+                player.getInventory().items.stream(),
+                Services.PLATFORM.getAdditionalEquipment(player)
+        ).flatMap(Function.identity());
+    }
+
+    public static Optional<PearlNecklaceItem> getWearing(Entity entity) {
+        if(!(entity instanceof Player player)) return Optional.empty();
+        return getEquipment(player)
+                .map(ItemStack::getItem)
+                .filter(it -> it instanceof PearlNecklaceItem)
+                .map(it -> (PearlNecklaceItem) it)
+                .findFirst();
+    }
+
     private final int level;
 
     public PearlNecklaceItem(Properties properties, int necklaceLevel) {
@@ -32,4 +55,5 @@ public class PearlNecklaceItem extends Item {
     public int getLevel() {
         return this.level;
     }
+
 }
