@@ -18,29 +18,38 @@ import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
 import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 import net.minecraftforge.forgespi.locating.IModFile;
+import net.minecraftforge.registries.DeferredRegister;
+import net.minecraftforge.registries.ForgeRegistries;
 import net.minecraftforge.resource.PathPackResources;
 
 import java.nio.file.Path;
 
-@Mod(CrittersAndCompanions.MODID)
-@Mod.EventBusSubscriber(modid = CrittersAndCompanions.MODID, bus = Mod.EventBusSubscriber.Bus.MOD)
+import static com.github.eterdelta.crittersandcompanions.CrittersAndCompanions.MODID;
+
+@Mod(MODID)
+@Mod.EventBusSubscriber(modid = MODID, bus = Mod.EventBusSubscriber.Bus.MOD)
 public class CrittersAndCompanionsForge {
 
     public CrittersAndCompanionsForge() {
         CrittersAndCompanions.init();
 
-        FMLJavaModLoadingContext.get().getModEventBus().addListener((FMLCommonSetupEvent event) -> event.enqueueWork(CrittersAndCompanions::setup));
-        FMLJavaModLoadingContext.get().getModEventBus().addListener((FMLClientSetupEvent event) -> event.enqueueWork(CrittersAndCompanionsClient::clientSetup));
+        var modBus = FMLJavaModLoadingContext.get().getModEventBus();
+        modBus.addListener((FMLCommonSetupEvent event) -> event.enqueueWork(CrittersAndCompanions::setup));
+        modBus.addListener((FMLClientSetupEvent event) -> event.enqueueWork(CrittersAndCompanionsClient::clientSetup));
+
+        var lootModifiers = DeferredRegister.create(ForgeRegistries.Keys.GLOBAL_LOOT_MODIFIER_SERIALIZERS, MODID);
+        lootModifiers.register("replace_item", () -> ReplaceItemModifier.CODEC);
+        lootModifiers.register(modBus);
     }
 
     @SubscribeEvent
     public static void onAddPackFinders(AddPackFindersEvent event) {
         if (event.getPackType() == PackType.CLIENT_RESOURCES) {
-            IModFile modFile = ModList.get().getModFileById(CrittersAndCompanions.MODID).getFile();
+            IModFile modFile = ModList.get().getModFileById(MODID).getFile();
             Path resourcePath = modFile.findResource("resourcepacks/friendlyart");
             try (PathPackResources pack = new PathPackResources(modFile.getFileName() + ":" + resourcePath, true, resourcePath)) {
                 event.addRepositorySource(consumer -> consumer.accept(Pack.readMetaAndCreate(
-                        "builtin/" + CrittersAndCompanions.MODID,
+                        "builtin/" + MODID,
                         Component.literal("Friendly Critter Art"),
                         false,
                         ignored -> pack,
@@ -56,7 +65,7 @@ public class CrittersAndCompanionsForge {
         CrittersAndCompanions.onAttributeCreation(event::put);
     }
 
-    @Mod.EventBusSubscriber(modid = CrittersAndCompanions.MODID, bus = Mod.EventBusSubscriber.Bus.FORGE)
+    @Mod.EventBusSubscriber(modid = MODID, bus = Mod.EventBusSubscriber.Bus.FORGE)
     public static class ForgeEvents {
 
         @SubscribeEvent

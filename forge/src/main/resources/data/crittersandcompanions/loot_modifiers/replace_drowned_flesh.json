@@ -1,0 +1,18 @@
+{
+  "type": "crittersandcompanions:replace_item",
+  "conditions": [
+    {
+      "condition": "forge:loot_table_id",
+      "loot_table_id": "minecraft:entities/drowned"
+    }
+  ],
+  "items": [
+    {
+      "weight": 1,
+      "data": {
+        "id": "crittersandcompanions:clam",
+        "Count": 1
+      }
+    }
+  ]
+}

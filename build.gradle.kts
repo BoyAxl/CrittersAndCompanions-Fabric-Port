@@ -28,5 +28,12 @@ subprojects {
                 includeGroup("com.jamieswhiteshirt")
             }
         }
+
+        maven {
+            url = uri("https://maven.blamejared.com/")
+            content {
+                includeGroup("mezz.jei")
+            }
+        }
     }
 }

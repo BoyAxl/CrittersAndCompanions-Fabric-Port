@@ -27,6 +27,7 @@ public class CrittersAndCompanionsFabric implements ModInitializer {
         EntityTrackingEvents.STOP_TRACKING.register(PlayerHandler::onPlayerStopTracking);
 
         CACWorldGen.register();
+        CACLootModifiers.register();
     }
 
 }
