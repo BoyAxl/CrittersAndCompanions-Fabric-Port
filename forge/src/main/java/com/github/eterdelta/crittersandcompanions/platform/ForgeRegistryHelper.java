@@ -6,10 +6,10 @@ import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.event.BuildCreativeModeTabContentsEvent;
-import net.minecraftforge.eventbus.api.IEventBus;
-import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
-import net.minecraftforge.registries.DeferredRegister;
+import net.neoforged.bus.api.IEventBus;
+import net.neoforged.fml.ModLoadingContext;
+import net.neoforged.neoforge.event.BuildCreativeModeTabContentsEvent;
+import net.neoforged.neoforge.registries.DeferredRegister;
 
 import java.util.function.Supplier;
 
@@ -20,12 +20,12 @@ public class ForgeRegistryHelper<T> implements RegistryHelper<T> {
     public ForgeRegistryHelper(ResourceKey<Registry<T>> key, String modid) {
         this.deferred = DeferredRegister.create(key, modid);
 
-        var modContext = FMLJavaModLoadingContext.get();
-        if(modContext == null) {
+        var modBus = ModLoadingContext.get().getActiveContainer().getEventBus();
+        if(modBus == null) {
             throw new IllegalStateException("created registry helper too late: %s for %s".formatted(key, modid));
         }
 
-        deferred.register(modContext.getModEventBus());
+        deferred.register(modBus);
     }
 
     @Override
@@ -50,7 +50,7 @@ public class ForgeRegistryHelper<T> implements RegistryHelper<T> {
         public ItemHelper(String modid) {
             super(Registries.ITEM, modid);
 
-            IEventBus modBus = FMLJavaModLoadingContext.get().getModEventBus();
+            IEventBus modBus = ModLoadingContext.get().getActiveContainer().getEventBus();
             modBus.addListener((BuildCreativeModeTabContentsEvent event) -> {
                 if (event.getTab() != CrittersAndCompanions.CREATIVE_TAB.get()) return;
 

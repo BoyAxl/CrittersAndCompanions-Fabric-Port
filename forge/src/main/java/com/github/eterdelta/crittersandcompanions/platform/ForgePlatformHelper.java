@@ -2,6 +2,7 @@ package com.github.eterdelta.crittersandcompanions.platform;
 
 import com.github.eterdelta.crittersandcompanions.compat.CuriosCompat;
 import com.github.eterdelta.crittersandcompanions.platform.service.IPlatformHelper;
+import net.minecraft.core.Holder;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
@@ -18,6 +19,7 @@ import net.minecraft.world.level.material.Fluid;
 import net.minecraftforge.common.ForgeMod;
 import net.minecraftforge.common.ForgeSpawnEggItem;
 import net.minecraftforge.fml.ModList;
+import net.neoforged.neoforge.common.NeoForgeMod;
 
 import java.util.function.Supplier;
 import java.util.stream.Stream;
@@ -35,8 +37,8 @@ public class ForgePlatformHelper implements IPlatformHelper {
     }
 
     @Override
-    public Attribute getSwimSpeedAttribute() {
-        return ForgeMod.SWIM_SPEED.get();
+    public Holder<Attribute> getSwimSpeedAttribute() {
+        return NeoForgeMod.SWIM_SPEED;
     }
 
     @Override

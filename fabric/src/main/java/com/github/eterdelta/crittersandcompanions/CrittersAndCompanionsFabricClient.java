@@ -35,7 +35,7 @@ public class CrittersAndCompanionsFabricClient implements ClientModInitializer {
             registrationHelper.register(new BubbleLayer(playerRenderer, context.getModelSet()));
         });
 
-        var resourcePack = new ResourceLocation(CrittersAndCompanions.MODID, "friendlyart");
+        var resourcePack = CrittersAndCompanions.createId("friendlyart");
         FabricLoader.getInstance().getModContainer(resourcePack.getNamespace()).ifPresent(mod -> {
             ResourceManagerHelper.registerBuiltinResourcePack(resourcePack, mod, ResourcePackActivationType.NORMAL);
         });

@@ -1,5 +1,5 @@
 plugins {
-    id("com.possible-triangle.gradle") version ("0.1.5")
+    id("com.possible-triangle.gradle") version ("0.2.10")
 }
 
 subprojects {
@@ -15,7 +15,7 @@ subprojects {
         }
 
         maven {
-            url = uri("https://mvn.devos.one/releases/")
+            url = uri("https://mvn.devos.one/snapshots/")
             content {
                 includeGroup("io.github.fabricators_of_create.Porting-Lib")
                 //includeGroup("io.github.tropheusj")
@@ -53,7 +53,14 @@ subprojects {
         maven {
             url = uri("https://maven.ladysnake.org/releases")
             content {
-                includeGroup("dev.onyxstudios.cardinal-components-api")
+                includeGroup("org.ladysnake.cardinal-components-api")
+            }
+        }
+
+        maven {
+            url = uri("https://jitpack.io")
+            content {
+                includeGroup("com.github.Chocohead")
             }
         }
     }

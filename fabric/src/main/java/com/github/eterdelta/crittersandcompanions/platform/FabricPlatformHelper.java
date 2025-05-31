@@ -4,6 +4,7 @@ import com.github.eterdelta.crittersandcompanions.compat.TrinketsCompat;
 import com.github.eterdelta.crittersandcompanions.platform.service.IPlatformHelper;
 import io.github.fabricators_of_create.porting_lib.attributes.PortingLibAttributes;
 import net.fabricmc.loader.api.FabricLoader;
+import net.minecraft.core.Holder;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
@@ -34,7 +35,7 @@ public class FabricPlatformHelper implements IPlatformHelper {
     }
 
     @Override
-    public Attribute getSwimSpeedAttribute() {
+    public Holder<Attribute> getSwimSpeedAttribute() {
         return PortingLibAttributes.SWIM_SPEED;
     }
 

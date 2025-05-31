@@ -2,62 +2,52 @@ package com.github.eterdelta.crittersandcompanions;
 
 import com.github.eterdelta.crittersandcompanions.handler.PlayerHandler;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.packs.PackType;
 import net.minecraft.server.packs.repository.Pack;
 import net.minecraft.server.packs.repository.PackSource;
 import net.minecraft.world.item.context.UseOnContext;
-import net.minecraftforge.event.AddPackFindersEvent;
-import net.minecraftforge.event.TickEvent;
-import net.minecraftforge.event.entity.EntityAttributeCreationEvent;
-import net.minecraftforge.event.entity.player.PlayerEvent;
-import net.minecraftforge.event.entity.player.PlayerInteractEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.ModList;
-import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
-import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
-import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
-import net.minecraftforge.forgespi.locating.IModFile;
-import net.minecraftforge.registries.DeferredRegister;
-import net.minecraftforge.registries.ForgeRegistries;
-import net.minecraftforge.resource.PathPackResources;
-
-import java.nio.file.Path;
+import net.neoforged.bus.api.IEventBus;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.fml.common.Mod;
+import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent;
+import net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent;
+import net.neoforged.neoforge.event.AddPackFindersEvent;
+import net.neoforged.neoforge.event.entity.EntityAttributeCreationEvent;
+import net.neoforged.neoforge.event.entity.player.PlayerEvent;
+import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
+import net.neoforged.neoforge.event.tick.PlayerTickEvent;
+import net.neoforged.neoforge.registries.DeferredRegister;
+import net.neoforged.neoforge.registries.NeoForgeRegistries;
 
 import static com.github.eterdelta.crittersandcompanions.CrittersAndCompanions.MODID;
 
 @Mod(MODID)
-@Mod.EventBusSubscriber(modid = MODID, bus = Mod.EventBusSubscriber.Bus.MOD)
+@EventBusSubscriber(modid = MODID, bus = EventBusSubscriber.Bus.MOD)
 public class CrittersAndCompanionsForge {
 
-    public CrittersAndCompanionsForge() {
+    public CrittersAndCompanionsForge(IEventBus modBus) {
         CrittersAndCompanions.init();
 
-        var modBus = FMLJavaModLoadingContext.get().getModEventBus();
         modBus.addListener((FMLCommonSetupEvent event) -> event.enqueueWork(CrittersAndCompanions::setup));
         modBus.addListener((FMLClientSetupEvent event) -> event.enqueueWork(CrittersAndCompanionsClient::clientSetup));
 
-        var lootModifiers = DeferredRegister.create(ForgeRegistries.Keys.GLOBAL_LOOT_MODIFIER_SERIALIZERS, MODID);
+        var lootModifiers = DeferredRegister.create(NeoForgeRegistries.Keys.GLOBAL_LOOT_MODIFIER_SERIALIZERS, MODID);
         lootModifiers.register("replace_item", () -> ReplaceItemModifier.CODEC);
         lootModifiers.register(modBus);
     }
 
     @SubscribeEvent
     public static void onAddPackFinders(AddPackFindersEvent event) {
-        if (event.getPackType() == PackType.CLIENT_RESOURCES) {
-            IModFile modFile = ModList.get().getModFileById(MODID).getFile();
-            Path resourcePath = modFile.findResource("resourcepacks/friendlyart");
-            try (PathPackResources pack = new PathPackResources(modFile.getFileName() + ":" + resourcePath, true, resourcePath)) {
-                event.addRepositorySource(consumer -> consumer.accept(Pack.readMetaAndCreate(
-                        "builtin/" + MODID,
-                        Component.literal("Friendly Critter Art"),
-                        false,
-                        ignored -> pack,
-                        PackType.CLIENT_RESOURCES,
-                        Pack.Position.BOTTOM,
-                        PackSource.BUILT_IN)));
-            }
-        }
+        event.addPackFinders(
+                ResourceLocation.fromNamespaceAndPath(MODID, "resourcepacks/friendlyart"),
+                PackType.CLIENT_RESOURCES,
+                Component.literal("Friendly Critter Art"),
+                PackSource.BUILT_IN,
+                false,
+                Pack.Position.BOTTOM
+        );
     }
 
     @SubscribeEvent
@@ -65,7 +55,7 @@ public class CrittersAndCompanionsForge {
         CrittersAndCompanions.onAttributeCreation(event::put);
     }
 
-    @Mod.EventBusSubscriber(modid = MODID, bus = Mod.EventBusSubscriber.Bus.FORGE)
+    @EventBusSubscriber(modid = MODID)
     public static class ForgeEvents {
 
         @SubscribeEvent
@@ -79,9 +69,8 @@ public class CrittersAndCompanionsForge {
         }
 
         @SubscribeEvent
-        public static void onPlayerTick(TickEvent.PlayerTickEvent event) {
-            if (event.phase != TickEvent.Phase.END) return;
-            PlayerHandler.onPlayerTick(event.player);
+        public static void onPlayerTick(PlayerTickEvent.Post event) {
+            PlayerHandler.onPlayerTick(event.getEntity());
         }
 
         @SubscribeEvent

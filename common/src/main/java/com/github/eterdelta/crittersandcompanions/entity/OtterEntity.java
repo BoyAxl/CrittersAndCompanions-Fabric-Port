@@ -5,6 +5,7 @@ import com.github.eterdelta.crittersandcompanions.registry.CACEntities;
 import com.github.eterdelta.crittersandcompanions.registry.CACItems;
 import com.github.eterdelta.crittersandcompanions.registry.CACSounds;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.particles.ItemParticleOption;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.nbt.CompoundTag;
@@ -48,6 +49,7 @@ import net.minecraft.world.entity.animal.AbstractSchoolingFish;
 import net.minecraft.world.entity.animal.Animal;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.food.FoodProperties;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelAccessor;
@@ -55,18 +57,18 @@ import net.minecraft.world.level.ServerLevelAccessor;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.material.Fluid;
 import net.minecraft.world.level.pathfinder.AmphibiousNodeEvaluator;
-import net.minecraft.world.level.pathfinder.BlockPathTypes;
 import net.minecraft.world.level.pathfinder.Path;
 import net.minecraft.world.level.pathfinder.PathFinder;
+import net.minecraft.world.level.pathfinder.PathType;
 import net.minecraft.world.phys.Vec3;
 import software.bernie.geckolib.animatable.GeoEntity;
-import software.bernie.geckolib.core.animatable.instance.AnimatableInstanceCache;
-import software.bernie.geckolib.core.animation.AnimatableManager;
-import software.bernie.geckolib.core.animation.Animation;
-import software.bernie.geckolib.core.animation.AnimationController;
-import software.bernie.geckolib.core.animation.AnimationState;
-import software.bernie.geckolib.core.animation.RawAnimation;
-import software.bernie.geckolib.core.object.PlayState;
+import software.bernie.geckolib.animatable.instance.AnimatableInstanceCache;
+import software.bernie.geckolib.animation.AnimatableManager;
+import software.bernie.geckolib.animation.Animation;
+import software.bernie.geckolib.animation.AnimationController;
+import software.bernie.geckolib.animation.AnimationState;
+import software.bernie.geckolib.animation.PlayState;
+import software.bernie.geckolib.animation.RawAnimation;
 import software.bernie.geckolib.util.GeckoLibUtil;
 
 import java.util.EnumSet;
@@ -87,7 +89,7 @@ public class OtterEntity extends Animal implements GeoEntity {
         super(entityType, level);
         this.moveControl = new OtterMoveControl(this);
         this.lookControl = new OtterLookControl(this);
-        this.setPathfindingMalus(BlockPathTypes.WATER, 0.0F);
+        this.setPathfindingMalus(PathType.WATER, 0.0F);
         this.setCanPickUpLoot(true);
     }
 
@@ -100,10 +102,10 @@ public class OtterEntity extends Animal implements GeoEntity {
     }
 
     @Override
-    protected void defineSynchedData() {
-        super.defineSynchedData();
-        this.entityData.define(FLOATING, false);
-        this.entityData.define(EATING, false);
+    protected void defineSynchedData(SynchedEntityData.Builder builder) {
+        super.defineSynchedData(builder);
+        builder.define(FLOATING, false);
+        builder.define(EATING, false);
     }
 
     @Override
@@ -153,7 +155,7 @@ public class OtterEntity extends Animal implements GeoEntity {
     }
 
     @Override
-    public int getExperienceReward() {
+    protected int getBaseExperienceReward() {
         return this.random.nextInt(3, 7);
     }
 
@@ -225,7 +227,7 @@ public class OtterEntity extends Animal implements GeoEntity {
     }
 
     @Override
-    public ItemStack eat(Level level, ItemStack itemStack) {
+    public ItemStack eat(Level level, ItemStack itemStack, FoodProperties properties) {
         if (itemStack.is(CACItems.CLAM.get())) {
             if (this.random.nextFloat() <= 0.07F) {
                 Vec3 mouthPos = this.calculateMouthPos();
@@ -302,7 +304,7 @@ public class OtterEntity extends Animal implements GeoEntity {
 
     @Override
     public boolean isFood(ItemStack stack) {
-        return (stack.isEdible() && stack.is(ItemTags.FISHES)) || stack.is(CACItems.CLAM.get());
+        return (stack.has(DataComponents.FOOD) && stack.is(ItemTags.FISHES)) || stack.is(CACItems.CLAM.get());
     }
 
     @Override
@@ -347,8 +349,8 @@ public class OtterEntity extends Animal implements GeoEntity {
     }
 
     @Override
-    public SpawnGroupData finalizeSpawn(ServerLevelAccessor levelAccessor, DifficultyInstance difficultyInstance, MobSpawnType mobSpawnType, SpawnGroupData spawnGroupData, CompoundTag p_146750_) {
-        spawnGroupData = super.finalizeSpawn(levelAccessor, difficultyInstance, mobSpawnType, spawnGroupData, p_146750_);
+    public SpawnGroupData finalizeSpawn(ServerLevelAccessor levelAccessor, DifficultyInstance difficultyInstance, MobSpawnType mobSpawnType, SpawnGroupData spawnGroupData) {
+        spawnGroupData = super.finalizeSpawn(levelAccessor, difficultyInstance, mobSpawnType, spawnGroupData);
         if (mobSpawnType.equals(MobSpawnType.SPAWNER) && this.random.nextFloat() <= 0.2F) {
             for (int i = 0; i < this.random.nextInt(1, 4); i++) {
                 OtterEntity baby = CACEntities.OTTER.get().create(this.level());
@@ -418,7 +420,7 @@ public class OtterEntity extends Animal implements GeoEntity {
             ItemStack thrownAway = this.getMainHandItem().copy();
             ItemEntity itemEntity = new ItemEntity(this.level(), this.getX(), this.getY(), this.getZ(), thrownAway);
             itemEntity.setPickUpDelay(40);
-            itemEntity.setThrower(this.getUUID());
+            itemEntity.setThrower(this);
             this.getMainHandItem().shrink(thrownAway.getCount());
             this.level().addFreshEntity(itemEntity);
         }

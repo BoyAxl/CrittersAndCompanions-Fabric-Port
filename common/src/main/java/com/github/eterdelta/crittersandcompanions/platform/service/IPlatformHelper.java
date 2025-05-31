@@ -1,6 +1,7 @@
 package com.github.eterdelta.crittersandcompanions.platform.service;
 
 import com.github.eterdelta.crittersandcompanions.platform.RegistryHelper;
+import net.minecraft.core.Holder;
 import net.minecraft.core.Registry;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.sounds.SoundEvent;
@@ -21,7 +22,7 @@ public interface IPlatformHelper {
 
     <T> RegistryHelper<T> createRegistryHelper(ResourceKey<Registry<T>> registryKey, String modid);
 
-    Attribute getSwimSpeedAttribute();
+    Holder<Attribute> getSwimSpeedAttribute();
 
     SpawnEggItem createSpawnEgg(Supplier<? extends EntityType<? extends Mob>> entityType, int primary, int secondary, Item.Properties properties);
 

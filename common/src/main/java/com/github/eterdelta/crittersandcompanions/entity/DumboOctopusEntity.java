@@ -5,7 +5,7 @@ import com.github.eterdelta.crittersandcompanions.network.CACPacketHandler;
 import com.github.eterdelta.crittersandcompanions.network.ClientboundBubbleStatePacket;
 import com.github.eterdelta.crittersandcompanions.registry.CACItems;
 import com.github.eterdelta.crittersandcompanions.registry.CACSounds;
-import net.minecraft.core.BlockPos;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
@@ -14,17 +14,13 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.util.Mth;
-import net.minecraft.util.RandomSource;
 import net.minecraft.world.DifficultyInstance;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
-import net.minecraft.world.entity.EntityDimensions;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.MobSpawnType;
-import net.minecraft.world.entity.MobType;
 import net.minecraft.world.entity.MoverType;
-import net.minecraft.world.entity.Pose;
 import net.minecraft.world.entity.SpawnGroupData;
 import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
@@ -37,17 +33,17 @@ import net.minecraft.world.entity.animal.Bucketable;
 import net.minecraft.world.entity.animal.WaterAnimal;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.component.CustomData;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.LevelAccessor;
 import net.minecraft.world.level.ServerLevelAccessor;
 import net.minecraft.world.phys.Vec3;
 import software.bernie.geckolib.animatable.GeoEntity;
-import software.bernie.geckolib.core.animatable.instance.AnimatableInstanceCache;
-import software.bernie.geckolib.core.animation.AnimatableManager;
-import software.bernie.geckolib.core.animation.AnimationController;
-import software.bernie.geckolib.core.animation.AnimationState;
-import software.bernie.geckolib.core.animation.RawAnimation;
-import software.bernie.geckolib.core.object.PlayState;
+import software.bernie.geckolib.animatable.instance.AnimatableInstanceCache;
+import software.bernie.geckolib.animation.AnimatableManager;
+import software.bernie.geckolib.animation.AnimationController;
+import software.bernie.geckolib.animation.AnimationState;
+import software.bernie.geckolib.animation.PlayState;
+import software.bernie.geckolib.animation.RawAnimation;
 import software.bernie.geckolib.util.GeckoLibUtil;
 
 import java.util.EnumSet;
@@ -68,11 +64,6 @@ public class DumboOctopusEntity extends WaterAnimal implements GeoEntity, Bucket
         this.lookControl = new SmoothSwimmingLookControl(this, 180);
     }
 
-    @Override
-    public MobType getMobType() {
-        return MobType.WATER;
-    }
-
     public static AttributeSupplier.Builder createAttributes() {
         return Mob.createMobAttributes().add(Attributes.MAX_HEALTH, 14.0D).add(Attributes.MOVEMENT_SPEED, 0.06D);
     }
@@ -88,11 +79,11 @@ public class DumboOctopusEntity extends WaterAnimal implements GeoEntity, Bucket
     }
 
     @Override
-    protected void defineSynchedData() {
-        super.defineSynchedData();
-        this.entityData.define(RESTING, false);
-        this.entityData.define(VARIANT, 0);
-        this.entityData.define(FROM_BUCKET, false);
+    protected void defineSynchedData(SynchedEntityData.Builder builder) {
+        super.defineSynchedData(builder);
+        builder.define(RESTING, false);
+        builder.define(VARIANT, 0);
+        builder.define(FROM_BUCKET, false);
     }
 
     @Override
@@ -129,17 +120,16 @@ public class DumboOctopusEntity extends WaterAnimal implements GeoEntity, Bucket
 
     @Override
     public void saveToBucketTag(ItemStack bucketStack) {
-        CompoundTag bucketCompound = bucketStack.getOrCreateTag();
         Bucketable.saveDefaultDataToBucketTag(this, bucketStack);
-        bucketCompound.putInt("BucketVariant", this.getVariant());
+        CustomData.update(DataComponents.BUCKET_ENTITY_DATA, bucketStack, nbt -> {
+            nbt.putInt("Variant", this.getVariant());
+        });
     }
 
     @Override
     public void loadFromBucketTag(CompoundTag bucketCompound) {
         Bucketable.loadDefaultDataFromBucketTag(this, bucketCompound);
-        if (bucketCompound.contains("BucketVariant")) {
-            this.setVariant(bucketCompound.getInt("BucketVariant"));
-        }
+        setVariant(bucketCompound.getInt("Variant"));
     }
 
     @Override
@@ -152,10 +142,11 @@ public class DumboOctopusEntity extends WaterAnimal implements GeoEntity, Bucket
         return SoundEvents.BUCKET_FILL_AXOLOTL;
     }
 
-    @Override
-    protected float getStandingEyeHeight(Pose pose, EntityDimensions entityDimensions) {
-        return entityDimensions.height * 0.5F;
-    }
+    // TODO
+    //@Override
+    //protected double getEyeY(Pose pose, EntityDimensions entityDimensions) {
+    //    return entityDimensions.height() * 0.5F;
+    //}
 
     @Override
     public void aiStep() {
@@ -199,7 +190,8 @@ public class DumboOctopusEntity extends WaterAnimal implements GeoEntity, Bucket
     }
 
     @Override
-    public SpawnGroupData finalizeSpawn(ServerLevelAccessor levelAccessor, DifficultyInstance difficultyInstance, MobSpawnType mobSpawnType, SpawnGroupData spawnGroupData, CompoundTag p_146750_) {
+    public SpawnGroupData finalizeSpawn(ServerLevelAccessor levelAccessor, DifficultyInstance difficultyInstance, MobSpawnType mobSpawnType, SpawnGroupData spawnGroupData) {
+        super.finalizeSpawn(levelAccessor, difficultyInstance, mobSpawnType, spawnGroupData);
         this.setVariant(this.random.nextInt(0, 4));
         return spawnGroupData;
     }

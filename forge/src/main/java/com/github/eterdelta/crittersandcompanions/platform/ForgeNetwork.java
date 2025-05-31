@@ -15,7 +15,7 @@ public class ForgeNetwork implements INetwork {
     private final String protocol = "2";
 
     private final SimpleChannel channel = NetworkRegistry.newSimpleChannel(
-            new ResourceLocation(CrittersAndCompanions.MODID, "main"),
+            CrittersAndCompanions.createId("main"),
             () -> protocol,
             protocol::equals,
             protocol::equals

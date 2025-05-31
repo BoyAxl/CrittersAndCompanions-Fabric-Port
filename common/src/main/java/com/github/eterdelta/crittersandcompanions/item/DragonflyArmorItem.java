@@ -8,7 +8,7 @@ public class DragonflyArmorItem extends Item {
     private final int healthBuff;
 
     public DragonflyArmorItem(int healthBuff, String tierName, Item.Properties properties) {
-        this(healthBuff, new ResourceLocation(CrittersAndCompanions.MODID, "textures/entity/dragonfly_armor_" + tierName + ".png"), properties);
+        this(healthBuff, CrittersAndCompanions.createId("textures/entity/dragonfly_armor_" + tierName + ".png"), properties);
     }
 
     public DragonflyArmorItem(int healthBuff, ResourceLocation tierName, Item.Properties properties) {

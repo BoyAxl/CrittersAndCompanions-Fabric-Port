@@ -12,6 +12,7 @@ import com.github.eterdelta.crittersandcompanions.registry.CACItems;
 import com.github.eterdelta.crittersandcompanions.registry.CACSounds;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
@@ -23,6 +24,10 @@ import java.util.function.BiConsumer;
 public class CrittersAndCompanions {
     public static final String MODID = "crittersandcompanions";
 
+    public static ResourceLocation createId(String path) {
+        return ResourceLocation.fromNamespaceAndPath(MODID, path);
+    }
+
     private static final RegistryHelper<CreativeModeTab> CREATIVE_TABS = Services.PLATFORM.createRegistryHelper(Registries.CREATIVE_MODE_TAB, MODID);
     public static final RegistryEntry<CreativeModeTab> CREATIVE_TAB = CREATIVE_TABS.register("main", () -> CreativeModeTab.builder(CreativeModeTab.Row.TOP, 0)
             .icon(() -> CACItems.PEARL_NECKLACE_1.get().getDefaultInstance())
@@ -31,8 +36,6 @@ public class CrittersAndCompanions {
     );
 
     public static void init() {
-        GeckoLib.initialize();
-
         CACBlocks.init();
         CACEntities.init();
         CACItems.init();

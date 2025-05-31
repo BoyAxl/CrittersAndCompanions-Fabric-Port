@@ -49,7 +49,7 @@ public class CACWorldGen {
         BiomeModifications.addFeature(
                 it -> it.hasTag(biome),
                 GenerationStep.Decoration.TOP_LAYER_MODIFICATION,
-                ResourceKey.create(Registries.PLACED_FEATURE, new ResourceLocation(CrittersAndCompanions.MODID, feature))
+                ResourceKey.create(Registries.PLACED_FEATURE, CrittersAndCompanions.createId(feature))
         );
     }
 

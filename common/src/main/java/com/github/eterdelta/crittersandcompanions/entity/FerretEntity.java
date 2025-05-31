@@ -4,6 +4,8 @@ import com.github.eterdelta.crittersandcompanions.CrittersAndCompanions;
 import com.github.eterdelta.crittersandcompanions.platform.Services;
 import com.github.eterdelta.crittersandcompanions.registry.CACEntities;
 import com.github.eterdelta.crittersandcompanions.registry.CACSounds;
+import net.minecraft.core.Holder;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.particles.BlockParticleOption;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.core.registries.Registries;
@@ -11,7 +13,7 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundEvents;
@@ -67,13 +69,13 @@ import net.minecraft.world.level.storage.loot.LootParams;
 import net.minecraft.world.level.storage.loot.LootTable;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParamSets;
 import software.bernie.geckolib.animatable.GeoEntity;
-import software.bernie.geckolib.core.animatable.instance.AnimatableInstanceCache;
-import software.bernie.geckolib.core.animation.AnimatableManager;
-import software.bernie.geckolib.core.animation.Animation;
-import software.bernie.geckolib.core.animation.AnimationController;
-import software.bernie.geckolib.core.animation.AnimationState;
-import software.bernie.geckolib.core.animation.RawAnimation;
-import software.bernie.geckolib.core.object.PlayState;
+import software.bernie.geckolib.animatable.instance.AnimatableInstanceCache;
+import software.bernie.geckolib.animation.AnimatableManager;
+import software.bernie.geckolib.animation.Animation;
+import software.bernie.geckolib.animation.AnimationController;
+import software.bernie.geckolib.animation.AnimationState;
+import software.bernie.geckolib.animation.PlayState;
+import software.bernie.geckolib.animation.RawAnimation;
 import software.bernie.geckolib.util.GeckoLibUtil;
 
 import java.util.EnumSet;
@@ -84,8 +86,8 @@ public class FerretEntity extends TamableAnimal implements GeoEntity {
     private static final EntityDataAccessor<Boolean> SLEEPING = SynchedEntityData.defineId(FerretEntity.class, EntityDataSerializers.BOOLEAN);
     private static final EntityDataAccessor<Boolean> DIGGING = SynchedEntityData.defineId(FerretEntity.class, EntityDataSerializers.BOOLEAN);
     private static final EntityDataAccessor<Integer> VARIANT = SynchedEntityData.defineId(FerretEntity.class, EntityDataSerializers.INT);
-    private static final TagKey<Item> FOODS_TAG = TagKey.create(Registries.ITEM, new ResourceLocation(CrittersAndCompanions.MODID, "ferret_food"));
-    private static final ResourceLocation DIGGABLES = new ResourceLocation(CrittersAndCompanions.MODID, "gameplay/digging");
+    private static final TagKey<Item> FOODS_TAG = TagKey.create(Registries.ITEM, CrittersAndCompanions.createId("ferret_food"));
+    private static final ResourceKey<LootTable> DIGGABLES = ResourceKey.create(Registries.LOOT_TABLE, CrittersAndCompanions.createId("gameplay/digging"));
     private final AnimatableInstanceCache cache = GeckoLibUtil.createInstanceCache(this);
 
     protected BlockState stateToDig;
@@ -101,11 +103,11 @@ public class FerretEntity extends TamableAnimal implements GeoEntity {
     }
 
     @Override
-    protected void defineSynchedData() {
-        super.defineSynchedData();
-        this.entityData.define(SLEEPING, false);
-        this.entityData.define(DIGGING, false);
-        this.entityData.define(VARIANT, 0);
+    protected void defineSynchedData(SynchedEntityData.Builder builder) {
+        super.defineSynchedData(builder);
+        builder.define(SLEEPING, false);
+        builder.define(DIGGING, false);
+        builder.define(VARIANT, 0);
     }
 
     @Override
@@ -119,7 +121,7 @@ public class FerretEntity extends TamableAnimal implements GeoEntity {
         this.goalSelector.addGoal(6, new BreedGoal(this, 1.25D));
         this.goalSelector.addGoal(7, new MeleeAttackGoal(this, 1.5D, true));
         this.goalSelector.addGoal(8, new TemptGoal(this, 1.0D, Ingredient.of(FOODS_TAG), false));
-        this.goalSelector.addGoal(9, new FollowOwnerGoal(this, 1.0D, 10.0F, 2.0F, false));
+        this.goalSelector.addGoal(9, new FollowOwnerGoal(this, 1.0D, 10.0F, 2.0F));
         this.goalSelector.addGoal(10, new FollowParentGoal(this, 1.0D));
         this.goalSelector.addGoal(11, new WaterAvoidingRandomStrollGoal(this, 1.0D));
         this.goalSelector.addGoal(12, new LookAtPlayerGoal(this, Player.class, 8.0F));
@@ -143,7 +145,7 @@ public class FerretEntity extends TamableAnimal implements GeoEntity {
     }
 
     @Override
-    public int getExperienceReward() {
+    public int getBaseExperienceReward() {
         return this.random.nextInt(2, 5);
     }
 
@@ -168,7 +170,7 @@ public class FerretEntity extends TamableAnimal implements GeoEntity {
 
             if (uuid != null) {
                 baby.setOwnerUUID(uuid);
-                baby.setTame(true);
+                baby.setTame(true, false);
             }
         }
         return baby;
@@ -222,7 +224,8 @@ public class FerretEntity extends TamableAnimal implements GeoEntity {
                     return InteractionResult.sidedSuccess(this.level().isClientSide());
                 } else if (this.getHealth() < this.getMaxHealth()) {
                     this.gameEvent(GameEvent.EAT, this);
-                    this.heal(handStack.getItem().getFoodProperties().getNutrition());
+                    var food = handStack.get(DataComponents.FOOD);
+                    if (food != null) this.heal(food.nutrition());
                     if (!player.getAbilities().instabuild) {
                         handStack.shrink(1);
                     }
@@ -261,8 +264,8 @@ public class FerretEntity extends TamableAnimal implements GeoEntity {
     }
 
     @Override
-    public SpawnGroupData finalizeSpawn(ServerLevelAccessor levelAccessor, DifficultyInstance difficultyInstance, MobSpawnType mobSpawnType, SpawnGroupData spawnGroupData, CompoundTag p_146750_) {
-        spawnGroupData = super.finalizeSpawn(levelAccessor, difficultyInstance, mobSpawnType, spawnGroupData, p_146750_);
+    public SpawnGroupData finalizeSpawn(ServerLevelAccessor levelAccessor, DifficultyInstance difficultyInstance, MobSpawnType mobSpawnType, SpawnGroupData spawnGroupData) {
+        spawnGroupData = super.finalizeSpawn(levelAccessor, difficultyInstance, mobSpawnType, spawnGroupData);
         if (mobSpawnType.equals(MobSpawnType.SPAWNER) && this.random.nextFloat() <= 0.2F) {
             for (int i = 0; i < this.random.nextInt(1, 4); i++) {
                 FerretEntity baby = CACEntities.FERRET.get().create(this.level());
@@ -407,17 +410,19 @@ public class FerretEntity extends TamableAnimal implements GeoEntity {
                     }
                 }
                 if (this.digTime == 10) {
-                    LootTable digTable = FerretEntity.this.level().getServer().getLootData().getLootTable(DIGGABLES);
-                    List<ItemStack> dugItems = digTable.getRandomItems(new LootParams.Builder((ServerLevel) level()).create(LootContextParamSets.EMPTY));
+                    var lootTables = FerretEntity.this.level().getServer().registryAccess().lookupOrThrow(Registries.LOOT_TABLE);
+                    lootTables.get(DIGGABLES).map(Holder::value).ifPresent(digTable -> {
+                        List<ItemStack> dugItems = digTable.getRandomItems(new LootParams.Builder((ServerLevel) level()).create(LootContextParamSets.EMPTY));
 
-                    if (!dugItems.isEmpty()) {
-                        FerretEntity.this.level().playSound(null, FerretEntity.this, SoundEvents.ITEM_PICKUP, SoundSource.BLOCKS, 0.1F, 1.2F);
-                    }
+                        if (!dugItems.isEmpty()) {
+                            FerretEntity.this.level().playSound(null, FerretEntity.this, SoundEvents.ITEM_PICKUP, SoundSource.BLOCKS, 0.1F, 1.2F);
+                        }
 
-                    for (ItemStack stack : dugItems) {
-                        ItemEntity itemEntity = new ItemEntity(FerretEntity.this.level(), FerretEntity.this.getX(), FerretEntity.this.getY(), FerretEntity.this.getZ(), stack);
-                        FerretEntity.this.level().addFreshEntity(itemEntity);
-                    }
+                        for (ItemStack stack : dugItems) {
+                            ItemEntity itemEntity = new ItemEntity(FerretEntity.this.level(), FerretEntity.this.getX(), FerretEntity.this.getY(), FerretEntity.this.getZ(), stack);
+                            FerretEntity.this.level().addFreshEntity(itemEntity);
+                        }
+                    });
                     ExperienceOrb xp = new ExperienceOrb(FerretEntity.this.level(), FerretEntity.this.getX(), FerretEntity.this.getY(), FerretEntity.this.getZ(), FerretEntity.this.random.nextInt(1, 6));
                     FerretEntity.this.level().addFreshEntity(xp);
                 }
