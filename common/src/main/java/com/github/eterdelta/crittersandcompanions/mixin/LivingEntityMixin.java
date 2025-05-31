@@ -27,6 +27,7 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.ModifyArg;
 import org.spongepowered.asm.mixin.injection.ModifyVariable;
 import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
@@ -181,12 +182,12 @@ public abstract class LivingEntityMixin extends Entity implements ISilkLeashStat
         return flag || this.getFeetBlockState().is(CACBlocks.SEA_BUNNY_SLIME_BLOCK.get());
     }
 
-    @ModifyVariable(at = @At(value = "LOAD", ordinal = 3), method = "travel(Lnet/minecraft/world/phys/Vec3;)V", ordinal = 1)
-    private float modifySwimSpeed(float swimSpeed) {
+    @ModifyArg(method = "travel", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/entity/LivingEntity;moveRelative(FLnet/minecraft/world/phys/Vec3;)V", ordinal = 0))
+    private float modifySwimSpeed(float original) {
         return PearlNecklaceItem.getWearing(this)
                 .map(PearlNecklaceItem::getLevel)
-                .map(level -> swimSpeed + (swimSpeed * ((level * 20) / 100.0F)))
-                .orElse(swimSpeed);
+                .map(level -> original + (original * (level / 5.0F)))
+                .orElse(original);
     }
 
     @Override
