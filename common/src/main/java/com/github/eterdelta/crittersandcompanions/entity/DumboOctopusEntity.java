@@ -142,12 +142,6 @@ public class DumboOctopusEntity extends WaterAnimal implements GeoEntity, Bucket
         return SoundEvents.BUCKET_FILL_AXOLOTL;
     }
 
-    // TODO
-    //@Override
-    //protected double getEyeY(Pose pose, EntityDimensions entityDimensions) {
-    //    return entityDimensions.height() * 0.5F;
-    //}
-
     @Override
     public void aiStep() {
         super.aiStep();

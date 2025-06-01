@@ -4,16 +4,13 @@ import com.github.eterdelta.crittersandcompanions.platform.RegistryHelper;
 import net.minecraft.core.Holder;
 import net.minecraft.core.Registry;
 import net.minecraft.resources.ResourceKey;
-import net.minecraft.sounds.SoundEvent;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.ai.attributes.Attribute;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.MobBucketItem;
 import net.minecraft.world.item.SpawnEggItem;
-import net.minecraft.world.level.material.Fluid;
 
 import java.util.function.Supplier;
 import java.util.stream.Stream;
@@ -25,8 +22,6 @@ public interface IPlatformHelper {
     Holder<Attribute> getSwimSpeedAttribute();
 
     SpawnEggItem createSpawnEgg(Supplier<? extends EntityType<? extends Mob>> entityType, int primary, int secondary, Item.Properties properties);
-
-    MobBucketItem createMobBucket(Supplier<? extends EntityType<? extends Mob>> entityType, Fluid fluid, SoundEvent emptySound, Item.Properties properties);
 
     Stream<ItemStack> getAdditionalEquipment(Player player);
 

@@ -50,7 +50,6 @@ public class GrapplingHookRenderer extends EntityRenderer<GrapplingHookEntity> {
             poseStack.pushPose();
             poseStack.translate(0.0D, -1.25D, 0.0D);
             VertexConsumer vertexConsumer = bufferSource.getBuffer(RenderType.entityCutout(TEXTURE));
-            // TODO check color
             this.hookModel.renderToBuffer(poseStack, vertexConsumer, packedLight, OverlayTexture.NO_OVERLAY, 0xFFFFFFFF);
             poseStack.popPose();
 

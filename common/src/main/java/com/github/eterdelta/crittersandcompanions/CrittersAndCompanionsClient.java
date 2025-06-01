@@ -33,7 +33,6 @@ public class CrittersAndCompanionsClient {
     private static final ClampedItemPropertyFunction BUCKET_VARIANT = (stack, clientLevel, entity, seed) -> {
         var customData = stack.get(DataComponents.BUCKET_ENTITY_DATA);
         if (customData != null) {
-            // TODO extract variable
             return customData.copyTag().getInt("Variant");
         } else {
             return 0.0F;

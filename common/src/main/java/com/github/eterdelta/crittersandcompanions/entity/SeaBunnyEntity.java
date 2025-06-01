@@ -219,7 +219,6 @@ public class SeaBunnyEntity extends WaterAnimal implements Bucketable, GeoEntity
     }
 
     private PlayState predicate(AnimationState<?> event) {
-        // TODO check, this used to be animation speed
         if (this.getSpeed() > 0.03F) {
             event.getController().setAnimation(RawAnimation.begin().thenLoop("sea_bunny_move"));
         } else {

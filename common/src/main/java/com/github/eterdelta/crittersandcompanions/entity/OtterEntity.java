@@ -1,13 +1,14 @@
 package com.github.eterdelta.crittersandcompanions.entity;
 
+import com.github.eterdelta.crittersandcompanions.CrittersAndCompanions;
 import com.github.eterdelta.crittersandcompanions.platform.Services;
 import com.github.eterdelta.crittersandcompanions.registry.CACEntities;
 import com.github.eterdelta.crittersandcompanions.registry.CACItems;
 import com.github.eterdelta.crittersandcompanions.registry.CACSounds;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.particles.ItemParticleOption;
 import net.minecraft.core.particles.ParticleTypes;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
@@ -17,7 +18,6 @@ import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.tags.FluidTags;
-import net.minecraft.tags.ItemTags;
 import net.minecraft.tags.TagKey;
 import net.minecraft.util.Mth;
 import net.minecraft.util.RandomSource;
@@ -49,7 +49,7 @@ import net.minecraft.world.entity.animal.AbstractSchoolingFish;
 import net.minecraft.world.entity.animal.Animal;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.food.FoodProperties;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelAccessor;
@@ -78,6 +78,8 @@ public class OtterEntity extends Animal implements GeoEntity {
     private static final EntityDataAccessor<Boolean> FLOATING = SynchedEntityData.defineId(OtterEntity.class, EntityDataSerializers.BOOLEAN);
     private static final EntityDataAccessor<Boolean> EATING = SynchedEntityData.defineId(OtterEntity.class, EntityDataSerializers.BOOLEAN);
     private final AnimatableInstanceCache cache = GeckoLibUtil.createInstanceCache(this);
+
+    private static final TagKey<Item> FOODS_TAG = TagKey.create(Registries.ITEM, CrittersAndCompanions.createId("otter_food"));
 
     private boolean needsSurface;
     private int huntDelay;
@@ -202,7 +204,7 @@ public class OtterEntity extends Animal implements GeoEntity {
                         this.playSound(CACSounds.OTTER_EAT.get(), 1.2F, 1.0F);
                     }
                     if (--this.eatTime <= 0) {
-                        this.eat(this.level(), this.getMainHandItem());
+                        this.eatOrOpen(this.level(), this.getMainHandItem());
                         this.setEating(false);
                     }
                 }
@@ -226,8 +228,7 @@ public class OtterEntity extends Animal implements GeoEntity {
         }
     }
 
-    @Override
-    public ItemStack eat(Level level, ItemStack itemStack, FoodProperties properties) {
+    public ItemStack eatOrOpen(Level level, ItemStack itemStack) {
         if (itemStack.is(CACItems.CLAM.get())) {
             if (this.random.nextFloat() <= 0.07F) {
                 Vec3 mouthPos = this.calculateMouthPos();
@@ -240,7 +241,7 @@ public class OtterEntity extends Animal implements GeoEntity {
             itemStack.shrink(1);
             return itemStack;
         } else {
-            return super.eat(level, itemStack, properties);
+            return eat(level, itemStack);
         }
     }
 
@@ -304,7 +305,7 @@ public class OtterEntity extends Animal implements GeoEntity {
 
     @Override
     public boolean isFood(ItemStack stack) {
-        return (stack.has(DataComponents.FOOD) && stack.is(ItemTags.FISHES)) || stack.is(CACItems.CLAM.get());
+        return stack.is(FOODS_TAG);
     }
 
     @Override

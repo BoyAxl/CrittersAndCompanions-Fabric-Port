@@ -1,10 +1,13 @@
 package com.github.eterdelta.crittersandcompanions.entity;
 
+import com.github.eterdelta.crittersandcompanions.CrittersAndCompanions;
 import com.github.eterdelta.crittersandcompanions.item.DragonflyArmorItem;
 import com.github.eterdelta.crittersandcompanions.platform.Services;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundEvents;
+import net.minecraft.tags.TagKey;
 import net.minecraft.util.Mth;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.InteractionHand;
@@ -31,8 +34,8 @@ import net.minecraft.world.entity.ai.util.AirAndWaterRandomPos;
 import net.minecraft.world.entity.ai.util.HoverRandomPos;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.Items;
 import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelAccessor;
@@ -54,6 +57,9 @@ import software.bernie.geckolib.util.GeckoLibUtil;
 import java.util.EnumSet;
 
 public class DragonflyEntity extends TamableAnimal implements GeoEntity {
+
+    private static final TagKey<Item> FOODS_TAG = TagKey.create(Registries.ITEM, CrittersAndCompanions.createId("dragonfly_food"));
+
     private final AnimatableInstanceCache cache = GeckoLibUtil.createInstanceCache(this);
 
     public DragonflyEntity(EntityType<? extends DragonflyEntity> entityType, Level level) {
@@ -79,7 +85,7 @@ public class DragonflyEntity extends TamableAnimal implements GeoEntity {
         this.goalSelector.addGoal(0, new SitWhenOrderedToGoal(this));
         this.goalSelector.addGoal(1, new MeleeAttackGoal(this, 1.0D, true));
         this.goalSelector.addGoal(2, new FollowOwnerGoal(this, 1.0D, 6.0F, 2.0F));
-        this.goalSelector.addGoal(3, new TemptGoal(this, 1.0D, Ingredient.of(Items.SPIDER_EYE), false));
+        this.goalSelector.addGoal(3, new TemptGoal(this, 1.0D, Ingredient.of(FOODS_TAG), false));
         this.goalSelector.addGoal(4, new RandomFlyGoal());
 
         this.targetSelector.addGoal(0, new OwnerHurtByTargetGoal(this));
@@ -145,7 +151,7 @@ public class DragonflyEntity extends TamableAnimal implements GeoEntity {
         ItemStack handStack = player.getItemInHand(hand);
 
         if (this.isTame()) {
-            if (handStack.is(Items.SPIDER_EYE) && this.getHealth() < this.getMaxHealth()) {
+            if (handStack.is(FOODS_TAG) && this.getHealth() < this.getMaxHealth()) {
                 this.gameEvent(GameEvent.EAT, this);
                 this.heal(2.0F);
                 if (!player.getAbilities().instabuild) {
@@ -178,7 +184,7 @@ public class DragonflyEntity extends TamableAnimal implements GeoEntity {
                 return InteractionResult.sidedSuccess(this.level().isClientSide());
             }
         } else {
-            if (handStack.is(Items.SPIDER_EYE)) {
+            if (handStack.is(FOODS_TAG)) {
                 if (!player.getAbilities().instabuild) {
                     handStack.shrink(1);
                 }

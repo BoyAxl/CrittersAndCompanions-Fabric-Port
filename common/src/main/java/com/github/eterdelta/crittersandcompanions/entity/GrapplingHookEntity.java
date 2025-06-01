@@ -42,7 +42,6 @@ public class GrapplingHookEntity extends ThrowableItemProjectile {
 
     @Override
     public void tick() {
-        // TODO Check if side effects
         super.tick();
 
         if (!addedToWorld) {

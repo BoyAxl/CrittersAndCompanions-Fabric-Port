@@ -1,14 +1,17 @@
 package com.github.eterdelta.crittersandcompanions.entity;
 
+import com.github.eterdelta.crittersandcompanions.CrittersAndCompanions;
 import com.github.eterdelta.crittersandcompanions.platform.Services;
 import com.github.eterdelta.crittersandcompanions.registry.CACEntities;
 import com.github.eterdelta.crittersandcompanions.registry.CACSounds;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundEvent;
+import net.minecraft.tags.TagKey;
 import net.minecraft.world.DifficultyInstance;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
@@ -36,8 +39,8 @@ import net.minecraft.world.entity.ai.goal.TemptGoal;
 import net.minecraft.world.entity.ai.goal.WaterAvoidingRandomStrollGoal;
 import net.minecraft.world.entity.ai.targeting.TargetingConditions;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.Items;
 import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.ServerLevelAccessor;
@@ -58,6 +61,10 @@ import java.util.EnumSet;
 import java.util.List;
 
 public class RedPandaEntity extends TamableAnimal implements GeoEntity {
+
+    private static final TagKey<Item> TEMPT_TAG = TagKey.create(Registries.ITEM, CrittersAndCompanions.createId("red_panda_tempt_items"));
+    private static final TagKey<Item> FOODS_TAG = TagKey.create(Registries.ITEM, CrittersAndCompanions.createId("red_panda_food"));
+
     protected static final List<EntityType<? extends Mob>> SCAREABLES = new ArrayList<>(Arrays.asList(
             EntityType.BEE,
             EntityType.ENDERMAN,
@@ -100,7 +107,7 @@ public class RedPandaEntity extends TamableAnimal implements GeoEntity {
         this.goalSelector.addGoal(3, new SitWhenOrderedToGoal(this));
         this.goalSelector.addGoal(4, new SleepGoal(140));
         this.goalSelector.addGoal(5, new BreedGoal(this, 1.25D));
-        this.goalSelector.addGoal(6, new TemptGoal(this, 1.0D, Ingredient.of(Items.SWEET_BERRIES), false));
+        this.goalSelector.addGoal(6, new TemptGoal(this, 1.0D, Ingredient.of(TEMPT_TAG), false));
         this.goalSelector.addGoal(7, new FollowOwnerGoal(this, 1.0D, 10.0F, 2.0F));
         this.goalSelector.addGoal(8, new FollowParentGoal(this, 1.0D));
         this.goalSelector.addGoal(9, new WaterAvoidingRandomStrollGoal(this, 1.0D));
@@ -144,7 +151,7 @@ public class RedPandaEntity extends TamableAnimal implements GeoEntity {
             ItemStack handStack = player.getItemInHand(interactionHand);
 
             if (!this.isTame()) {
-                if (handStack.is(Items.SWEET_BERRIES)) {
+                if (handStack.is(TEMPT_TAG)) {
                     if (!player.getAbilities().instabuild) {
                         handStack.shrink(1);
                     }
@@ -159,7 +166,7 @@ public class RedPandaEntity extends TamableAnimal implements GeoEntity {
                     return InteractionResult.sidedSuccess(this.level().isClientSide());
                 }
             } else if (this.isTame() && this.isOwnedBy(player)) {
-                if (!this.isFood(handStack) && !handStack.is(Items.SWEET_BERRIES)) {
+                if (!this.isFood(handStack) && !handStack.is(TEMPT_TAG)) {
                     this.setOrderedToSit(!this.isOrderedToSit());
                     return InteractionResult.sidedSuccess(this.level().isClientSide());
                 } else if (this.getHealth() < this.getMaxHealth()) {
@@ -179,7 +186,7 @@ public class RedPandaEntity extends TamableAnimal implements GeoEntity {
 
     @Override
     public boolean isFood(ItemStack itemStack) {
-        return itemStack.is(Items.BAMBOO);
+        return itemStack.is(FOODS_TAG);
     }
 
     @Override
@@ -220,7 +227,6 @@ public class RedPandaEntity extends TamableAnimal implements GeoEntity {
             event.getController().setAnimation(RawAnimation.begin().thenLoop("red_panda_sleeping"));
         } else if (event.isMoving()) {
             if (this.getSpeed() >= 0.8F) {
-                // TODO double check this, this used to be animation speed
                 event.getController().setAnimation(RawAnimation.begin().thenLoop("red_panda_run"));
             } else {
                 event.getController().setAnimation(RawAnimation.begin().thenLoop("red_panda_walk"));
