@@ -1,5 +1,5 @@
 {
-  "type": "forge:add_spawns",
+  "type": "neoforge:add_spawns",
   "biomes": "minecraft:lush_caves",
   "spawners": {
     "type": "crittersandcompanions:jumping_spider",

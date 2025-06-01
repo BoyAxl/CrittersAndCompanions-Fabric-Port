@@ -1,6 +1,7 @@
 package com.github.eterdelta.crittersandcompanions;
 
 import com.github.eterdelta.crittersandcompanions.handler.PlayerHandler;
+import com.github.eterdelta.crittersandcompanions.platform.ForgeNetwork;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.packs.PackType;
@@ -29,9 +30,10 @@ public class CrittersAndCompanionsForge {
 
     public CrittersAndCompanionsForge(IEventBus modBus) {
         CrittersAndCompanions.init();
+        ForgeNetwork.register(modBus);
 
         modBus.addListener((FMLCommonSetupEvent event) -> event.enqueueWork(CrittersAndCompanions::setup));
-        modBus.addListener((FMLClientSetupEvent event) -> event.enqueueWork(CrittersAndCompanionsClient::clientSetup));
+        modBus.addListener((FMLClientSetupEvent event) -> event.enqueueWork(CrittersAndCompanionsClient::init));
 
         var lootModifiers = DeferredRegister.create(NeoForgeRegistries.Keys.GLOBAL_LOOT_MODIFIER_SERIALIZERS, MODID);
         lootModifiers.register("replace_item", () -> ReplaceItemModifier.CODEC);

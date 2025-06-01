@@ -14,24 +14,24 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.level.LightLayer;
 import net.minecraft.world.phys.Vec3;
 import org.joml.Matrix4f;
-import org.spongepowered.asm.mixin.Unique;
-import software.bernie.geckolib.event.GeoRenderEvent;
-import software.bernie.geckolib.renderer.GeoEntityRenderer;
 
 import java.util.Set;
 
 public class SilkLeashRenderer {
-    public static void renderSilkLeash(GeoRenderEvent.Entity.Post event) {
-        if (event.getEntity() instanceof LivingEntity livingEntity && event.getEntity() instanceof ISilkLeashState leashState) {
+
+    public static void renderSilkLeash(Entity entity, float partialTicks, PoseStack poseStack, MultiBufferSource bufferSource) {
+        if (entity instanceof LivingEntity livingEntity && entity instanceof ISilkLeashState leashState) {
             Set<LivingEntity> leashedByEntities = leashState.getLeashedByEntities();
             for (LivingEntity leashedBy : leashedByEntities) {
-                renderSilkLeash(event.getRenderer(), livingEntity, event.getPartialTick(), event.getPoseStack(), event.getBufferSource(), leashedBy);
+                renderSilkLeash(livingEntity, partialTicks, poseStack, bufferSource, leashedBy);
             }
         }
     }
 
-    @Unique
-    private static void crittersAndCompanions$addVertexPair(VertexConsumer vertexConsumer, Matrix4f matrix4f, float p_174310_, float p_174311_, float p_174312_, int p_174313_, int p_174315_, int p_174316_, float p_174318_, float p_174319_, float p_174320_, int p_174321_, boolean p_174322_, float gradient) {
+    /**
+     * Mostly copied from {@link net.minecraft.client.renderer.entity.EntityRenderer#addVertexPair(VertexConsumer, Matrix4f, float, float, float, int, int, int, int, float, float, float, float, int, boolean)}
+     */
+    private static void addVertexPair(VertexConsumer vertexConsumer, Matrix4f matrix4f, float p_174310_, float p_174311_, float p_174312_, int p_174313_, int p_174315_, int p_174316_, float p_174318_, float p_174319_, float p_174320_, int p_174321_, boolean p_174322_, float gradient) {
         float f = (float) p_174321_ / 24.0F;
         int i = (int) Mth.lerp(f, (float) p_174313_, (float) 1);
         int j = (int) Mth.lerp(f, (float) p_174315_, (float) p_174316_);
@@ -43,12 +43,14 @@ public class SilkLeashRenderer {
         float f5 = p_174310_ * f;
         float f6 = p_174311_ > 0.0F ? p_174311_ * f * f : p_174311_ - p_174311_ * (1.0F - f) * (1.0F - f);
         float f7 = p_174312_ * f;
-        vertexConsumer.vertex(matrix4f, f5 - p_174319_, f6 + p_174318_, f7 + p_174320_).color(r, g, b, 1.0F).uv2(k).endVertex();
-        vertexConsumer.vertex(matrix4f, f5 + p_174319_, f6 + (float) 0.025 - p_174318_, f7 - p_174320_).color(r, g, b, 1.0F).uv2(k).endVertex();
+        vertexConsumer.addVertex(matrix4f, f5 - p_174319_, f6 + p_174318_, f7 + p_174320_).setColor(r, g, b, 1.0F).setLight(k);
+        vertexConsumer.addVertex(matrix4f, f5 + p_174319_, f6 + (float) 0.025 - p_174318_, f7 - p_174320_).setColor(r, g, b, 1.0F).setLight(k);
     }
 
-    @Unique
-    private static <E extends Entity> void renderSilkLeash(GeoEntityRenderer<?> renderer, LivingEntity entity, float partialTicks, PoseStack poseStack, MultiBufferSource bufferSource, E leashedToEntity) {
+    /**
+     * Mostly copied from {@link net.minecraft.client.renderer.entity.EntityRenderer#renderLeash(Entity, float, PoseStack, MultiBufferSource, Entity)}
+     */
+    public static <E extends Entity> void renderSilkLeash(LivingEntity entity, float partialTicks, PoseStack poseStack, MultiBufferSource bufferSource, E leashedToEntity) {
         poseStack.pushPose();
         Vec3 vec3 = leashedToEntity.getRopeHoldPosition(partialTicks);
         double d0 = (double) (Mth.lerp(partialTicks, entity.yBodyRotO, entity.yBodyRot) * ((float) Math.PI / 180F)) + (Math.PI / 2D);
@@ -74,10 +76,10 @@ public class SilkLeashRenderer {
         int l = entity.level().getBrightness(LightLayer.SKY, blockpos1);
 
         for (int i1 = 0; i1 <= 24; ++i1) {
-            crittersAndCompanions$addVertexPair(vertexconsumer, matrix4f, f, f1, f2, i, k, l, 0.025F, f5, f6, i1, false, 0.25F + 0.75F * (i1 / 24.0F));
+            addVertexPair(vertexconsumer, matrix4f, f, f1, f2, i, k, l, 0.025F, f5, f6, i1, false, 0.25F + 0.75F * (i1 / 24.0F));
         }
         for (int j1 = 24; j1 >= 0; --j1) {
-            crittersAndCompanions$addVertexPair(vertexconsumer, matrix4f, f, f1, f2, i, k, l, 0.0F, f5, f6, j1, true, 0.25F + 0.75F * (j1 / 24.0F));
+            addVertexPair(vertexconsumer, matrix4f, f, f1, f2, i, k, l, 0.0F, f5, f6, j1, true, 0.25F + 0.75F * (j1 / 24.0F));
         }
 
         poseStack.popPose();

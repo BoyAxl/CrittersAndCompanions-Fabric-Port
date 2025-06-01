@@ -10,7 +10,6 @@ import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.AgeableMob;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.MobType;
 import net.minecraft.world.entity.TamableAnimal;
 import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
@@ -44,8 +43,8 @@ import software.bernie.geckolib.animatable.instance.AnimatableInstanceCache;
 import software.bernie.geckolib.animation.AnimatableManager;
 import software.bernie.geckolib.animation.AnimationController;
 import software.bernie.geckolib.animation.AnimationState;
+import software.bernie.geckolib.animation.PlayState;
 import software.bernie.geckolib.animation.RawAnimation;
-import software.bernie.geckolib.object.PlayState;
 import software.bernie.geckolib.util.GeckoLibUtil;
 
 public class JumpingSpiderEntity extends TamableAnimal implements GeoEntity {
@@ -55,11 +54,6 @@ public class JumpingSpiderEntity extends TamableAnimal implements GeoEntity {
     public JumpingSpiderEntity(EntityType<? extends JumpingSpiderEntity> entityType, Level level) {
         super(entityType, level);
         this.moveControl = new JumpingSpiderMoveControl(this);
-    }
-
-    @Override
-    public MobType getMobType() {
-        return MobType.ARTHROPOD;
     }
 
     public static AttributeSupplier.Builder createAttributes() {
@@ -77,7 +71,7 @@ public class JumpingSpiderEntity extends TamableAnimal implements GeoEntity {
         this.goalSelector.addGoal(3, new LeapAtTargetGoal(this, 0.4F));
         this.goalSelector.addGoal(4, new MeleeAttackGoal(this, 1.0D, true));
         this.goalSelector.addGoal(5, new TemptGoal(this, 1.0D, Ingredient.of(CACItems.DRAGONFLY_WING.get()), false));
-        this.goalSelector.addGoal(6, new FollowOwnerGoal(this, 1.0D, 5.0F, 1.0F, true));
+        this.goalSelector.addGoal(6, new FollowOwnerGoal(this, 1.0D, 5.0F, 1.0F));
         this.goalSelector.addGoal(7, new WaterAvoidingRandomStrollGoal(this, 0.8D));
         this.goalSelector.addGoal(8, new LookAtPlayerGoal(this, Player.class, 8.0F));
         this.goalSelector.addGoal(9, new RandomLookAroundGoal(this));
@@ -98,6 +92,11 @@ public class JumpingSpiderEntity extends TamableAnimal implements GeoEntity {
         if (!blockState.is(Blocks.COBWEB)) {
             super.makeStuckInBlock(blockState, p_33797_);
         }
+    }
+
+    @Override
+    public boolean isFood(ItemStack stack) {
+        return false;
     }
 
     @Override

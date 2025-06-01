@@ -161,7 +161,7 @@ public abstract class LivingEntityMixin extends Entity implements ISilkLeashStat
         }
     }
 
-    @Inject(at = @At(value = "INVOKE", target = "net/minecraft/world/entity/LivingEntity.gameEvent(Lnet/minecraft/world/level/gameevent/GameEvent;)V", ordinal = 0, shift = At.Shift.BY, by = 1), method = "die")
+    @Inject(at = @At(value = "INVOKE", target = "Lnet/minecraft/world/level/Level;broadcastEntityEvent(Lnet/minecraft/world/entity/Entity;B)V", ordinal = 0, shift = At.Shift.BY, by = 1), method = "die")
     private void onDie(DamageSource source, CallbackInfo callbackInfo) {
         int unleashedStates = 0;
         unleashedStates += Math.max(0, SilkLeashItem.updateLeashStates((LivingEntity) ((Entity) this), null) - 1);
@@ -174,12 +174,12 @@ public abstract class LivingEntityMixin extends Entity implements ISilkLeashStat
 
     @Redirect(at = @At(value = "INVOKE", target = "net/minecraft/world/entity/LivingEntity.isInWater()Z"), method = "travel(Lnet/minecraft/world/phys/Vec3;)V")
     private boolean redirectIsInWater(LivingEntity entity) {
-        return this.isInWater() || this.getFeetBlockState().is(CACBlocks.SEA_BUNNY_SLIME_BLOCK.get());
+        return this.isInWater() || this.getBlockStateOn().is(CACBlocks.SEA_BUNNY_SLIME_BLOCK.get());
     }
 
     @ModifyVariable(at = @At(value = "LOAD"), method = "aiStep()V", ordinal = 0)
     private boolean modifyWaterFlag(boolean flag) {
-        return flag || this.getFeetBlockState().is(CACBlocks.SEA_BUNNY_SLIME_BLOCK.get());
+        return flag || this.getBlockStateOn().is(CACBlocks.SEA_BUNNY_SLIME_BLOCK.get());
     }
 
     @ModifyArg(method = "travel", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/entity/LivingEntity;moveRelative(FLnet/minecraft/world/phys/Vec3;)V", ordinal = 0))

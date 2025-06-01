@@ -1,10 +1,10 @@
 package com.github.eterdelta.crittersandcompanions;
 
 import com.github.eterdelta.crittersandcompanions.registry.CACItems;
-import net.fabricmc.fabric.api.loot.v2.FabricLootPoolBuilder;
-import net.fabricmc.fabric.api.loot.v2.LootTableEvents;
+import net.fabricmc.fabric.api.loot.v3.FabricLootPoolBuilder;
+import net.fabricmc.fabric.api.loot.v3.LootTableEvents;
 import net.fabricmc.fabric.mixin.loot.LootTableAccessor;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.storage.loot.BuiltInLootTables;
@@ -31,17 +31,19 @@ public class CACLootModifiers {
         });
     }
 
-    private static void addEntriesTo(ResourceLocation key, int index, Consumer<BiConsumer<Integer, ItemStack>> entries) {
-        LootTableEvents.REPLACE.register(((resources, lootManager, id, table, source) -> {
+    private static void addEntriesTo(ResourceKey<LootTable> key, int index, Consumer<BiConsumer<Integer, ItemStack>> entries) {
+        LootTableEvents.REPLACE.register(((id, table, source, lookupProvider) -> {
             if (!id.equals(key)) return null;
 
             var accessor = (LootTableAccessor) table;
             var builder = LootTable.lootTable()
-                    .setRandomSequence(accessor.fabric_getRandomSequenceId())
                     .setParamSet(table.getParamSet());
 
-            for (int i = 0; i < table.pools.length; i++) {
-                var pool = FabricLootPoolBuilder.copyOf(table.pools[i]);
+            accessor.fabric_getRandomSequenceId().ifPresent(builder::setRandomSequence);
+            var pools = accessor.fabric_getPools();
+
+            for (int i = 0; i < pools.size(); i++) {
+                var pool = FabricLootPoolBuilder.copyOf(pools.get(i));
 
                 if (i == index) {
                     entries.accept((weight, stack) -> {

@@ -1,6 +1,7 @@
 package com.github.eterdelta.crittersandcompanions.entity;
 
 import com.github.eterdelta.crittersandcompanions.registry.CACItems;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
@@ -12,13 +13,13 @@ import net.minecraft.world.DifficultyInstance;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.MobSpawnType;
-import net.minecraft.world.entity.MobType;
 import net.minecraft.world.entity.SpawnGroupData;
 import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.ai.goal.AvoidEntityGoal;
 import net.minecraft.world.entity.animal.AbstractSchoolingFish;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.component.CustomData;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.ServerLevelAccessor;
 import software.bernie.geckolib.animatable.GeoEntity;
@@ -26,8 +27,8 @@ import software.bernie.geckolib.animatable.instance.AnimatableInstanceCache;
 import software.bernie.geckolib.animation.AnimatableManager;
 import software.bernie.geckolib.animation.AnimationController;
 import software.bernie.geckolib.animation.AnimationState;
+import software.bernie.geckolib.animation.PlayState;
 import software.bernie.geckolib.animation.RawAnimation;
-import software.bernie.geckolib.object.PlayState;
 import software.bernie.geckolib.util.GeckoLibUtil;
 
 public class KoiFishEntity extends AbstractSchoolingFish implements GeoEntity {
@@ -43,9 +44,9 @@ public class KoiFishEntity extends AbstractSchoolingFish implements GeoEntity {
     }
 
     @Override
-    protected void defineSynchedData() {
-        super.defineSynchedData();
-        this.entityData.define(VARIANT, 0);
+    protected void defineSynchedData(SynchedEntityData.Builder builder) {
+        super.defineSynchedData(builder);
+        builder.define(VARIANT, 0);
     }
 
     @Override
@@ -69,16 +70,15 @@ public class KoiFishEntity extends AbstractSchoolingFish implements GeoEntity {
     @Override
     public void saveToBucketTag(ItemStack bucketStack) {
         super.saveToBucketTag(bucketStack);
-        CompoundTag bucketCompound = bucketStack.getOrCreateTag();
-        bucketCompound.putInt("BucketVariant", this.getVariant());
+        CustomData.update(DataComponents.BUCKET_ENTITY_DATA, bucketStack, nbt -> {
+            nbt.putInt("Variant", getVariant());
+        });
     }
 
     @Override
     public void loadFromBucketTag(CompoundTag bucketCompound) {
         super.loadFromBucketTag(bucketCompound);
-        if (bucketCompound.contains("BucketVariant")) {
-            this.setVariant(bucketCompound.getInt("BucketVariant"));
-        }
+        setVariant(bucketCompound.getInt("Variant"));
     }
 
     @Override
@@ -87,7 +87,7 @@ public class KoiFishEntity extends AbstractSchoolingFish implements GeoEntity {
     }
 
     @Override
-    public int getExperienceReward() {
+    public int getBaseExperienceReward() {
         return this.random.nextInt(1, 4);
     }
 
@@ -102,11 +102,10 @@ public class KoiFishEntity extends AbstractSchoolingFish implements GeoEntity {
     }
 
     @Override
-    public SpawnGroupData finalizeSpawn(ServerLevelAccessor levelAccessor, DifficultyInstance difficultyInstance, MobSpawnType mobSpawnType, SpawnGroupData spawnGroupData, CompoundTag bucketCompound) {
-        if (!mobSpawnType.equals(MobSpawnType.BUCKET) || bucketCompound == null || !bucketCompound.contains("BucketVariant")) {
-            this.setVariant(this.random.nextInt(0, 21));
-        }
-        return super.finalizeSpawn(levelAccessor, difficultyInstance, mobSpawnType, spawnGroupData, bucketCompound);
+    public SpawnGroupData finalizeSpawn(ServerLevelAccessor levelAccessor, DifficultyInstance difficultyInstance, MobSpawnType mobSpawnType, SpawnGroupData spawnGroupData) {
+        if (mobSpawnType == MobSpawnType.BUCKET) return spawnGroupData;
+        this.setVariant(this.random.nextInt(0, 21));
+        return super.finalizeSpawn(levelAccessor, difficultyInstance, mobSpawnType, spawnGroupData);
     }
 
 

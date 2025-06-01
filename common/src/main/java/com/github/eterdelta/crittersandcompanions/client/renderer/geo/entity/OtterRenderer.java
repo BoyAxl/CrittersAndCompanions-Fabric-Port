@@ -19,7 +19,7 @@ public class OtterRenderer extends GeoEntityRenderer<OtterEntity> {
     }
 
     @Override
-    public void renderRecursively(PoseStack stack, OtterEntity animatable, GeoBone bone, RenderType renderType, MultiBufferSource bufferSource, VertexConsumer buffer, boolean isReRender, float partialTick, int packedLight, int packedOverlay, float red, float green, float blue, float alpha) {
+    public void renderRecursively(PoseStack stack, OtterEntity animatable, GeoBone bone, RenderType renderType, MultiBufferSource bufferSource, VertexConsumer buffer, boolean isReRender, float partialTick, int packedLight, int packedOverlay, int color) {
         if (bone.getName().equals("held_item")) {
             stack.pushPose();
             stack.scale(0.5f, 0.5f, 0.5f);
@@ -32,6 +32,6 @@ public class OtterRenderer extends GeoEntityRenderer<OtterEntity> {
 
             buffer = bufferSource.getBuffer(RenderType.entityCutoutNoCull(this.getGeoModel().getTextureResource(animatable)));
         }
-        super.renderRecursively(stack, animatable, bone, renderType, bufferSource, buffer, isReRender, partialTick, packedLight, packedOverlay, red, green, blue, alpha);
+        super.renderRecursively(stack, animatable, bone, renderType, bufferSource, buffer, isReRender, partialTick, packedLight, packedOverlay, color);
     }
 }

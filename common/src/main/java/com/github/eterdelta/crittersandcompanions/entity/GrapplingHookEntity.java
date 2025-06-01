@@ -4,23 +4,21 @@ import com.github.eterdelta.crittersandcompanions.extension.IGrapplingState;
 import com.github.eterdelta.crittersandcompanions.network.CACPacketHandler;
 import com.github.eterdelta.crittersandcompanions.network.ClientboundGrapplingStatePacket;
 import com.github.eterdelta.crittersandcompanions.registry.CACEntities;
-import net.minecraft.network.syncher.EntityDataAccessor;
-import net.minecraft.network.syncher.EntityDataSerializers;
-import net.minecraft.network.syncher.SynchedEntityData;
+import com.github.eterdelta.crittersandcompanions.registry.CACItems;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.MoverType;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.entity.projectile.Projectile;
+import net.minecraft.world.entity.projectile.ThrowableItemProjectile;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.shapes.VoxelShape;
 
-import java.util.Optional;
+import java.util.OptionalInt;
 
-public class GrapplingHookEntity extends Projectile {
-    protected static final EntityDataAccessor<ItemStack> OWNER_STACK = SynchedEntityData.defineId(GrapplingHookEntity.class, EntityDataSerializers.ITEM_STACK);
+public class GrapplingHookEntity extends ThrowableItemProjectile {
     protected boolean isStick;
     protected boolean wasStick;
     protected double stickLength;
@@ -34,16 +32,17 @@ public class GrapplingHookEntity extends Projectile {
         this(CACEntities.GRAPPLING_HOOK.get(), level);
         this.moveTo(owner.getX(), owner.getEyeY(), owner.getZ(), owner.getYHeadRot(), owner.getXRot());
         this.setOwner(owner);
-        this.setOwnerStack(ownerStack);
+        this.setItem(ownerStack);
     }
 
     @Override
-    protected void defineSynchedData() {
-        this.entityData.define(OWNER_STACK, ItemStack.EMPTY);
+    protected Item getDefaultItem() {
+        return CACItems.GRAPPLING_HOOK.get();
     }
 
     @Override
     public void tick() {
+        // TODO Check if side effects
         super.tick();
 
         if (!addedToWorld) {
@@ -100,7 +99,7 @@ public class GrapplingHookEntity extends Projectile {
 
     public void pull() {
         if (this.getOwner() != null) {
-            if (this.level().isClientSide() && isStick) {
+            if (isStick) {
                 this.getOwner().setDeltaMovement(this.position().subtract(this.getOwner().position())
                         .multiply(0.25D, 0.2D, 0.25D)
                         .add(0.0D, 0.25D, 0.0D)
@@ -117,27 +116,16 @@ public class GrapplingHookEntity extends Projectile {
 
             grapplingState.setHook(this.isAlive() ? this : null);
             CACPacketHandler.GRAPPLING_STATE.sendToTracking(player,
-                    new ClientboundGrapplingStatePacket(this.isAlive() ? Optional.of(this.getId()) : Optional.empty(), player.getId()));
+                    new ClientboundGrapplingStatePacket(this.isAlive() ? OptionalInt.of(this.getId()) : OptionalInt.empty(), player.getId()));
         }
     }
 
     public boolean isFocused() {
         if (this.getOwner() instanceof Player player) {
-            if (this.level().isClientSide()) {
-                //TODO look at when less tired
-                return ItemStack.isSameItemSameTags(player.getMainHandItem(), this.getOwnerStack()) || ItemStack.isSameItemSameTags(player.getOffhandItem(), this.getOwnerStack());
-            } else {
-                return player.getMainHandItem() == this.getOwnerStack() || player.getOffhandItem() == this.getOwnerStack();
-            }
+            return ItemStack.isSameItemSameComponents(player.getMainHandItem(), getItem())
+                    || ItemStack.isSameItemSameComponents(player.getOffhandItem(), getItem());
         }
         return false;
     }
 
-    public ItemStack getOwnerStack() {
-        return this.entityData.get(OWNER_STACK);
-    }
-
-    public void setOwnerStack(ItemStack stack) {
-        this.entityData.set(OWNER_STACK, stack);
-    }
 }

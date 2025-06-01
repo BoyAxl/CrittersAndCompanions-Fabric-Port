@@ -35,7 +35,7 @@ public class FabricRegistryHelper<T> implements RegistryHelper<T> {
 
     @Override
     public <R extends T> RegistryEntry<R> register(String id, Supplier<? extends R> creator) {
-        var key = ResourceKey.create(registryKey, new ResourceLocation(modid, id));
+        var key = ResourceKey.create(registryKey, ResourceLocation.fromNamespaceAndPath(modid, id));
         var registered = Registry.register(registry, key, creator.get());
         return new RegistryEntry<>() {
             @Override

@@ -33,7 +33,7 @@ public class BubbleLayer extends RenderLayer<Player, PlayerModel<Player>> {
             VertexConsumer vertexConsumer = bufferSource.getBuffer(RenderType.entityCutout(TEXTURE));
             this.bubbleModel.bubble.copyFrom(this.getParentModel().head);
             this.bubbleModel.setupAnim(player, limbSwing, limbSwingAmount, ageInTicks, netHeadYaw, headPitch);
-            this.bubbleModel.renderToBuffer(poseStack, vertexConsumer, packedLight, OverlayTexture.NO_OVERLAY, 1.0F, 1.0F, 1.0F, 1.0F);
+            this.bubbleModel.renderToBuffer(poseStack, vertexConsumer, packedLight, OverlayTexture.NO_OVERLAY, 0xFFFFFFFF);
         }
     }
 }

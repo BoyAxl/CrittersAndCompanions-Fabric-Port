@@ -240,7 +240,7 @@ public class OtterEntity extends Animal implements GeoEntity {
             itemStack.shrink(1);
             return itemStack;
         } else {
-            return super.eat(level, itemStack);
+            return super.eat(level, itemStack, properties);
         }
     }
 

@@ -4,9 +4,8 @@ import com.github.eterdelta.crittersandcompanions.CrittersAndCompanions;
 import com.github.eterdelta.crittersandcompanions.entity.OtterEntity;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
-import software.bernie.geckolib.constant.DataTickets;
-import software.bernie.geckolib.animatable.model.CoreGeoBone;
 import software.bernie.geckolib.animation.AnimationState;
+import software.bernie.geckolib.constant.DataTickets;
 import software.bernie.geckolib.model.GeoModel;
 import software.bernie.geckolib.model.data.EntityModelData;
 
@@ -39,7 +38,7 @@ public class OtterModel extends GeoModel<OtterEntity> {
     @Override
     public void setCustomAnimations(OtterEntity animatable, long instanceId, AnimationState<OtterEntity> animationState) {
         super.setCustomAnimations(animatable, instanceId, animationState);
-        CoreGeoBone head = getAnimationProcessor().getBone(animatable.isInWater() ? "main" : "head");
+        var head = getAnimationProcessor().getBone(animatable.isInWater() ? "main" : "head");
 
         if (head != null && !animatable.isEating() && !animatable.isFloating()) {
             EntityModelData entityData = animationState.getData(DataTickets.ENTITY_MODEL_DATA);

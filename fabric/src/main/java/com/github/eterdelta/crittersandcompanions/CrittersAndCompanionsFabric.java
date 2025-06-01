@@ -1,8 +1,8 @@
 package com.github.eterdelta.crittersandcompanions;
 
 import com.github.eterdelta.crittersandcompanions.handler.PlayerHandler;
-import io.github.fabricators_of_create.porting_lib.entity.events.EntityInteractCallback;
-import io.github.fabricators_of_create.porting_lib.entity.events.PlayerTickEvents;
+import io.github.fabricators_of_create.porting_lib.entity.events.player.PlayerInteractEvent;
+import io.github.fabricators_of_create.porting_lib.entity.events.tick.PlayerTickEvent;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.networking.v1.EntityTrackingEvents;
 import net.fabricmc.fabric.api.object.builder.v1.entity.FabricDefaultAttributeRegistry;
@@ -17,12 +17,17 @@ public class CrittersAndCompanionsFabric implements ModInitializer {
 
         CrittersAndCompanions.onAttributeCreation(FabricDefaultAttributeRegistry::register);
 
-        EntityInteractCallback.EVENT.register((player, hand, target) -> {
-            if (player.level().isClientSide()) return null;
-            return PlayerHandler.onPlayerEntityInteract(target, new UseOnContext(player, hand, null));
+        // TODO check
+        PlayerInteractEvent.EntityInteract.EVENT.register(event -> {
+            if (event.getLevel().isClientSide()) return;
+            var result = PlayerHandler.onPlayerEntityInteract(event.getTarget(), new UseOnContext(event.getEntity(), event.getHand(), null));
+            if (result != null) {
+                event.setCancellationResult(result);
+                event.setCanceled(true);
+            }
         });
 
-        PlayerTickEvents.END.register(PlayerHandler::onPlayerTick);
+        PlayerTickEvent.Post.EVENT.register(event -> PlayerHandler.onPlayerTick(event.getEntity()));
         EntityTrackingEvents.START_TRACKING.register(PlayerHandler::onPlayerStartTracking);
         EntityTrackingEvents.STOP_TRACKING.register(PlayerHandler::onPlayerStopTracking);
 

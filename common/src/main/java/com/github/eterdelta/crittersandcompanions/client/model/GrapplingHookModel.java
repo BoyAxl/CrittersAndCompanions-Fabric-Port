@@ -29,7 +29,8 @@ public class GrapplingHookModel<T extends GrapplingHookEntity> extends EntityMod
     }
 
     @Override
-    public void renderToBuffer(PoseStack poseStack, VertexConsumer vertexConsumer, int packedLight, int packedOverlay, float red, float green, float blue, float alpha) {
-        hook.render(poseStack, vertexConsumer, packedLight, packedOverlay, red, green, blue, alpha);
+    public void renderToBuffer(PoseStack poseStack, VertexConsumer vertexConsumer, int packedLight, int packedOverlay, int color) {
+        hook.render(poseStack, vertexConsumer, packedLight, packedOverlay, color);
     }
+    
 }

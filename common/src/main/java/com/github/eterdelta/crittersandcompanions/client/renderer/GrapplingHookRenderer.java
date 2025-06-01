@@ -39,7 +39,7 @@ public class GrapplingHookRenderer extends EntityRenderer<GrapplingHookEntity> {
         f3 /= f6;
         f4 /= f6;
         f5 /= f6;
-        vertexConsumer.vertex(pose.pose(), f, f1, f2).color(193, 184, 205, 255).normal(pose.normal(), f3, f4, f5).endVertex();
+        vertexConsumer.addVertex(pose.pose(), f, f1, f2).setColor(193, 184, 205, 255).setNormal(pose, f3, f4, f5);
     }
 
     public void render(GrapplingHookEntity entity, float p_114706_, float partialTicks, PoseStack poseStack, MultiBufferSource bufferSource, int packedLight) {
@@ -50,11 +50,12 @@ public class GrapplingHookRenderer extends EntityRenderer<GrapplingHookEntity> {
             poseStack.pushPose();
             poseStack.translate(0.0D, -1.25D, 0.0D);
             VertexConsumer vertexConsumer = bufferSource.getBuffer(RenderType.entityCutout(TEXTURE));
-            this.hookModel.renderToBuffer(poseStack, vertexConsumer, packedLight, OverlayTexture.NO_OVERLAY, 1.0F, 1.0F, 1.0F, 1.0F);
+            // TODO check color
+            this.hookModel.renderToBuffer(poseStack, vertexConsumer, packedLight, OverlayTexture.NO_OVERLAY, 0xFFFFFFFF);
             poseStack.popPose();
 
             int handOffset = player.getMainArm() == HumanoidArm.RIGHT ? 1 : -1;
-            if (!player.getMainHandItem().is(entity.getOwnerStack().getItem())) {
+            if (!player.getMainHandItem().is(entity.getItem().getItem())) {
                 handOffset = -handOffset;
             }
 

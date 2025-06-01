@@ -17,7 +17,6 @@ import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
 import net.minecraft.world.item.CreativeModeTab;
-import software.bernie.geckolib.GeckoLib;
 
 import java.util.function.BiConsumer;
 
@@ -40,10 +39,10 @@ public class CrittersAndCompanions {
         CACEntities.init();
         CACItems.init();
         CACSounds.init();
+        CACPacketHandler.registerPackets();
     }
 
     public static void setup() {
-        CACPacketHandler.registerPackets();
         SpawnHandler.registerSpawnPlacements();
     }
 

@@ -2,19 +2,19 @@
     "type": "minecraft:crafting_shaped",
     "pattern": [
         "SS ",
-        "SI ",
+        "SB ",
         "  S"
     ],
     "key": {
         "S": {
             "item": "crittersandcompanions:silk"
         },
-        "I": {
-            "item": "minecraft:iron_ingot"
+        "B": {
+            "item": "minecraft:slime_ball"
         }
     },
     "result": {
-        "item": "crittersandcompanions:grappling_hook",
+        "id": "crittersandcompanions:silk_lead",
         "count": 1
     }
 }

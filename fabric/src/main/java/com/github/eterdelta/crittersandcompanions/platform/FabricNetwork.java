@@ -1,55 +1,42 @@
 package com.github.eterdelta.crittersandcompanions.platform;
 
-import com.github.eterdelta.crittersandcompanions.CrittersAndCompanions;
-import com.github.eterdelta.crittersandcompanions.network.IPacketHandler;
 import com.github.eterdelta.crittersandcompanions.platform.service.INetwork;
 import net.fabricmc.api.EnvType;
-import net.fabricmc.api.Environment;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
-import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
+import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.network.FriendlyByteBuf;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.server.level.ServerChunkCache;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 
-import java.util.Locale;
+import java.util.function.Consumer;
 
 public class FabricNetwork implements INetwork {
 
-    private <T> void registerReceiver(ResourceLocation id, IPacketHandler<T> handler) {
-        ClientPlayNetworking.registerGlobalReceiver(id, (client, handler1, buf, responseSender) -> {
-            var packet = handler.read(buf);
-            client.execute(() -> handler.handle(packet));
-        });
-    }
-
     @Override
-    public <T> Sender<T> createSender(Class<T> clazz, IPacketHandler<T> handler) {
-        var id = CrittersAndCompanions.createId(clazz.getSimpleName().toLowerCase(Locale.ROOT));
+    public <T extends CustomPacketPayload> Sender<T> createSender(CustomPacketPayload.TypeAndCodec<FriendlyByteBuf, T> type, Consumer<T> handler) {
+        PayloadTypeRegistry.playC2S().register(type.type(), type.codec());
+        PayloadTypeRegistry.playS2C().register(type.type(), type.codec());
 
         if (FabricLoader.getInstance().getEnvironmentType() == EnvType.CLIENT) {
-            registerReceiver(id, handler);
+            ClientPlayNetworking.registerGlobalReceiver(type.type(), (packet, context) -> handler.accept(packet));
+        } else {
+            ServerPlayNetworking.registerGlobalReceiver(type.type(), (packet, context) -> handler.accept(packet));
         }
 
         return new Sender<>() {
-            private FriendlyByteBuf write(T packet) {
-                var buf = PacketByteBufs.create();
-                handler.write(packet, buf);
-                return buf;
-            }
-
             @Override
             public void sendToPlayer(ServerPlayer player, T packet) {
-                ServerPlayNetworking.send(player, id, write(packet));
+                ServerPlayNetworking.send(player, packet);
             }
 
             @Override
             public void sendToTracking(Entity entity, T packet) {
                 if (entity.getCommandSenderWorld().getChunkSource() instanceof ServerChunkCache chunk) {
-                    chunk.broadcastAndSend(entity, ServerPlayNetworking.createS2CPacket(id, write(packet)));
+                    chunk.broadcastAndSend(entity, ServerPlayNetworking.createS2CPacket(packet));
                 }
             }
         };

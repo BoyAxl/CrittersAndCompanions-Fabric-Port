@@ -3,10 +3,6 @@ package com.github.eterdelta.crittersandcompanions.entity;
 import com.github.eterdelta.crittersandcompanions.item.DragonflyArmorItem;
 import com.github.eterdelta.crittersandcompanions.platform.Services;
 import net.minecraft.core.BlockPos;
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.network.syncher.EntityDataAccessor;
-import net.minecraft.network.syncher.EntityDataSerializers;
-import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.util.Mth;
@@ -14,11 +10,20 @@ import net.minecraft.util.RandomSource;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.damagesource.DamageSource;
-import net.minecraft.world.entity.*;
+import net.minecraft.world.entity.AgeableMob;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.MobSpawnType;
+import net.minecraft.world.entity.MoverType;
+import net.minecraft.world.entity.TamableAnimal;
 import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.ai.control.FlyingMoveControl;
-import net.minecraft.world.entity.ai.goal.*;
+import net.minecraft.world.entity.ai.goal.FollowOwnerGoal;
+import net.minecraft.world.entity.ai.goal.Goal;
+import net.minecraft.world.entity.ai.goal.MeleeAttackGoal;
+import net.minecraft.world.entity.ai.goal.SitWhenOrderedToGoal;
+import net.minecraft.world.entity.ai.goal.TemptGoal;
 import net.minecraft.world.entity.ai.goal.target.OwnerHurtByTargetGoal;
 import net.minecraft.world.entity.ai.navigation.FlyingPathNavigation;
 import net.minecraft.world.entity.ai.navigation.PathNavigation;
@@ -34,36 +39,30 @@ import net.minecraft.world.level.LevelAccessor;
 import net.minecraft.world.level.biome.Biomes;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.gameevent.GameEvent;
-import net.minecraft.world.level.pathfinder.BlockPathTypes;
+import net.minecraft.world.level.pathfinder.PathType;
 import net.minecraft.world.phys.Vec3;
-import software.bernie.geckolib.animatable.GeoEntity;
 import software.bernie.geckolib.animatable.GeoAnimatable;
+import software.bernie.geckolib.animatable.GeoEntity;
 import software.bernie.geckolib.animatable.instance.AnimatableInstanceCache;
 import software.bernie.geckolib.animation.AnimatableManager;
 import software.bernie.geckolib.animation.AnimationController;
 import software.bernie.geckolib.animation.AnimationState;
+import software.bernie.geckolib.animation.PlayState;
 import software.bernie.geckolib.animation.RawAnimation;
-import software.bernie.geckolib.object.PlayState;
 import software.bernie.geckolib.util.GeckoLibUtil;
 
 import java.util.EnumSet;
 
 public class DragonflyEntity extends TamableAnimal implements GeoEntity {
-    private static final EntityDataAccessor<ItemStack> ARMOR_ITEM = SynchedEntityData.defineId(DragonflyEntity.class, EntityDataSerializers.ITEM_STACK);
     private final AnimatableInstanceCache cache = GeckoLibUtil.createInstanceCache(this);
 
     public DragonflyEntity(EntityType<? extends DragonflyEntity> entityType, Level level) {
         super(entityType, level);
         this.moveControl = new DragonflyMoveControl(this);
 
-        this.setPathfindingMalus(BlockPathTypes.DANGER_FIRE, -1.0F);
-        this.setPathfindingMalus(BlockPathTypes.COCOA, -1.0F);
-        this.setPathfindingMalus(BlockPathTypes.FENCE, -1.0F);
-    }
-
-    @Override
-    public MobType getMobType() {
-        return MobType.ARTHROPOD;
+        this.setPathfindingMalus(PathType.DANGER_FIRE, -1.0F);
+        this.setPathfindingMalus(PathType.COCOA, -1.0F);
+        this.setPathfindingMalus(PathType.FENCE, -1.0F);
     }
 
     public static AttributeSupplier.Builder createAttributes() {
@@ -76,16 +75,10 @@ public class DragonflyEntity extends TamableAnimal implements GeoEntity {
     }
 
     @Override
-    protected void defineSynchedData() {
-        super.defineSynchedData();
-        this.entityData.define(ARMOR_ITEM, ItemStack.EMPTY);
-    }
-
-    @Override
     protected void registerGoals() {
         this.goalSelector.addGoal(0, new SitWhenOrderedToGoal(this));
         this.goalSelector.addGoal(1, new MeleeAttackGoal(this, 1.0D, true));
-        this.goalSelector.addGoal(2, new FollowOwnerGoal(this, 1.0D, 6.0F, 2.0F, true));
+        this.goalSelector.addGoal(2, new FollowOwnerGoal(this, 1.0D, 6.0F, 2.0F));
         this.goalSelector.addGoal(3, new TemptGoal(this, 1.0D, Ingredient.of(Items.SPIDER_EYE), false));
         this.goalSelector.addGoal(4, new RandomFlyGoal());
 
@@ -93,19 +86,7 @@ public class DragonflyEntity extends TamableAnimal implements GeoEntity {
     }
 
     @Override
-    public void addAdditionalSaveData(CompoundTag compound) {
-        super.addAdditionalSaveData(compound);
-        compound.put("ArmorItem", this.getArmor().save(new CompoundTag()));
-    }
-
-    @Override
-    public void readAdditionalSaveData(CompoundTag compound) {
-        super.readAdditionalSaveData(compound);
-        this.setArmor(ItemStack.of(compound.getCompound("ArmorItem")));
-    }
-
-    @Override
-    public int getExperienceReward() {
+    public int getBaseExperienceReward() {
         return this.random.nextInt(2, 5);
     }
 
@@ -119,9 +100,9 @@ public class DragonflyEntity extends TamableAnimal implements GeoEntity {
     public float getWalkTargetValue(BlockPos blockPos) {
         return !this.isTame() && this.level().getBiome(blockPos).is(Biomes.RIVER) ? 10.0F : 5.0F;
     }
-
+    
     @Override
-    public boolean canBeLeashed(Player player) {
+    public boolean canBeLeashed() {
         return false;
     }
 
@@ -173,6 +154,7 @@ public class DragonflyEntity extends TamableAnimal implements GeoEntity {
             } else if (this.isOwnedBy(player)) {
                 if (!this.level().isClientSide()) {
                     if (handStack.getItem() instanceof DragonflyArmorItem armorItem && this.getArmor().isEmpty()) {
+                        // TODO use attribute on item directly?
                         this.getAttribute(Attributes.MAX_HEALTH).setBaseValue(armorItem.getHealthBuff());
                         this.setHealth(armorItem.getHealthBuff());
                         this.setArmor(handStack.copy());
@@ -180,7 +162,7 @@ public class DragonflyEntity extends TamableAnimal implements GeoEntity {
                         if (!player.getAbilities().instabuild) {
                             handStack.shrink(1);
                         }
-                        this.playSound(SoundEvents.ARMOR_EQUIP_GENERIC, 0.4F, 1.5F);
+                        this.playSound(SoundEvents.ARMOR_EQUIP_GENERIC.value(), 0.4F, 1.5F);
 
                     } else if (player.isCrouching() && !this.getArmor().isEmpty()) {
                         this.getAttribute(Attributes.MAX_HEALTH).setBaseValue(8.0D);
@@ -215,9 +197,9 @@ public class DragonflyEntity extends TamableAnimal implements GeoEntity {
     }
 
     @Override
-    public void setTame(boolean tame) {
-        super.setTame(tame);
-        if (tame) {
+    public void setTame(boolean tame, boolean sideEffects) {
+        super.setTame(tame, sideEffects);
+        if (tame && sideEffects) {
             this.getAttribute(Attributes.MAX_HEALTH).setBaseValue(8.0D);
             this.setHealth(8.0F);
         } else {
@@ -250,11 +232,11 @@ public class DragonflyEntity extends TamableAnimal implements GeoEntity {
     }
 
     public ItemStack getArmor() {
-        return this.entityData.get(ARMOR_ITEM);
+        return getBodyArmorItem();
     }
 
     public void setArmor(ItemStack armorItem) {
-        this.entityData.set(ARMOR_ITEM, armorItem);
+        setBodyArmorItem(armorItem);
     }
 
     @Override

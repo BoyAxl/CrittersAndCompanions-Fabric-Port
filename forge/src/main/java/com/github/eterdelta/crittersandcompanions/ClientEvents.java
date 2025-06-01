@@ -39,7 +39,7 @@ public class ClientEvents {
 
         @SubscribeEvent
         public static void renderSilkLeash(GeoRenderEvent.Entity.Post event) {
-            SilkLeashRenderer.renderSilkLeash(event);
+            SilkLeashRenderer.renderSilkLeash(event.getEntity(), event.getPartialTick(), event.getPoseStack(), event.getBufferSource());
         }
 
     }

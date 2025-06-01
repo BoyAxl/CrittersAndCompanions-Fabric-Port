@@ -29,7 +29,7 @@ import net.minecraft.world.item.context.UseOnContext;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
-import java.util.Optional;
+import java.util.OptionalInt;
 import java.util.Set;
 
 public class PlayerHandler {
@@ -93,6 +93,7 @@ public class PlayerHandler {
 
     public static void onPlayerStartTracking(Entity target, Entity from) {
         if (target instanceof LivingEntity trackedEntity && from instanceof ServerPlayer player && target instanceof ISilkLeashState trackedState) {
+            if (trackedState.getLeashedByEntities().isEmpty() && trackedState.getLeashingEntities().isEmpty()) return;
             CACPacketHandler.SILK_LEASH_STATE.sendToPlayer(player,
                     new ClientboundSilkLeashStatePacket(
                             new ClientboundSilkLeashStatePacket.LeashData(
@@ -108,7 +109,7 @@ public class PlayerHandler {
             var grappleState = (IGrapplingState) trackedPlayer;
 
             CACPacketHandler.BUBBLE_STATE.sendToPlayer(fromPlayer, new ClientboundBubbleStatePacket(bubbleState.isBubbleActive(), trackedPlayer.getId()));
-            CACPacketHandler.GRAPPLING_STATE.sendToPlayer(fromPlayer, new ClientboundGrapplingStatePacket(grappleState.getHook() != null ? Optional.of(grappleState.getHook().getId()) : Optional.empty(), trackedPlayer.getId()));
+            CACPacketHandler.GRAPPLING_STATE.sendToPlayer(fromPlayer, new ClientboundGrapplingStatePacket(grappleState.getHook() != null ? OptionalInt.of(grappleState.getHook().getId()) : OptionalInt.empty(), trackedPlayer.getId()));
         }
     }
 

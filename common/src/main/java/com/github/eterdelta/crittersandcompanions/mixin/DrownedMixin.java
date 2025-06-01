@@ -1,7 +1,6 @@
 package com.github.eterdelta.crittersandcompanions.mixin;
 
 import com.github.eterdelta.crittersandcompanions.registry.CACItems;
-import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.DifficultyInstance;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.MobSpawnType;
@@ -21,7 +20,7 @@ public class DrownedMixin {
             method = "finalizeSpawn",
             at = @At("RETURN")
     )
-    private void addClam(ServerLevelAccessor serverLevelAccessor, DifficultyInstance difficultyInstance, MobSpawnType mobSpawnType, SpawnGroupData spawnGroupData, CompoundTag compoundTag, CallbackInfoReturnable<SpawnGroupData> cir) {
+    private void addClam(ServerLevelAccessor serverLevelAccessor, DifficultyInstance difficultyInstance, MobSpawnType mobSpawnType, SpawnGroupData spawnGroupData, CallbackInfoReturnable<SpawnGroupData> cir) {
         var self = (Drowned) (Object) this;
 
         if (self.getItemBySlot(EquipmentSlot.OFFHAND).isEmpty() && self.getRandom().nextFloat() < 0.05F) {

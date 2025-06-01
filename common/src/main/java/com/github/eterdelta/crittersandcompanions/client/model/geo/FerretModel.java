@@ -5,7 +5,6 @@ import com.github.eterdelta.crittersandcompanions.entity.FerretEntity;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
 import software.bernie.geckolib.constant.DataTickets;
-import software.bernie.geckolib.animatable.model.CoreGeoBone;
 import software.bernie.geckolib.animation.AnimationState;
 import software.bernie.geckolib.model.GeoModel;
 import software.bernie.geckolib.model.data.EntityModelData;
@@ -41,8 +40,8 @@ public class FerretModel extends GeoModel<FerretEntity> {
 
     @Override
     public void setCustomAnimations(FerretEntity animatable, long instanceId, AnimationState<FerretEntity> animationState) {
-        CoreGeoBone head = getAnimationProcessor().getBone("head");
-        CoreGeoBone neck = getAnimationProcessor().getBone("head_rotation");
+        var head = getAnimationProcessor().getBone("head");
+        var neck = getAnimationProcessor().getBone("head_rotation");
         var moving = animationState.isMoving();
 
         if (neck != null && head != null) {

@@ -1,55 +1,48 @@
 package com.github.eterdelta.crittersandcompanions.platform;
 
-import com.github.eterdelta.crittersandcompanions.CrittersAndCompanions;
-import com.github.eterdelta.crittersandcompanions.network.IPacketHandler;
 import com.github.eterdelta.crittersandcompanions.platform.service.INetwork;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
-import net.minecraftforge.network.NetworkRegistry;
-import net.minecraftforge.network.PacketDistributor;
-import net.minecraftforge.network.simple.SimpleChannel;
+import net.neoforged.bus.api.IEventBus;
+import net.neoforged.neoforge.network.PacketDistributor;
+import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
+import net.neoforged.neoforge.network.registration.PayloadRegistrar;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.function.Consumer;
 
 public class ForgeNetwork implements INetwork {
 
-    private final String protocol = "2";
+    private static final List<Consumer<PayloadRegistrar>> CALLBACKS = new ArrayList<>();
 
-    private final SimpleChannel channel = NetworkRegistry.newSimpleChannel(
-            CrittersAndCompanions.createId("main"),
-            () -> protocol,
-            protocol::equals,
-            protocol::equals
-    );
-
-    private int messageId = 0;
+    public static void register(IEventBus modBus) {
+        modBus.addListener((RegisterPayloadHandlersEvent event) -> {
+            var registrar = event.registrar("1");
+            CALLBACKS.forEach(it -> it.accept(registrar));
+            CALLBACKS.clear();
+        });
+    }
 
     @Override
-    public <T> Sender<T> createSender(Class<T> clazz, IPacketHandler<T> handler) {
-        channel.registerMessage(
-                messageId++, clazz,
-                handler::write,
-                handler::read,
-                (packet, contextSupplier) -> {
-                    var context = contextSupplier.get();
-
-                    context.enqueueWork(() -> handler.handle(packet));
-
-                    context.setPacketHandled(true);
-                }
-        );
+    public <T extends CustomPacketPayload> Sender<T> createSender(CustomPacketPayload.TypeAndCodec<FriendlyByteBuf, T> type, Consumer<T> handler) {
+        CALLBACKS.add(registrar -> {
+            registrar.playBidirectional(type.type(), type.codec(), (payload, context) -> handler.accept(payload));
+        });
 
         return new Sender<>() {
             @Override
             public void sendToPlayer(ServerPlayer player, T packet) {
-                channel.send(PacketDistributor.PLAYER.with(() -> player), packet);
+                PacketDistributor.sendToPlayer(player, packet);
             }
 
             @Override
             public void sendToTracking(Entity entity, T packet) {
                 if (entity.level().isClientSide()) return;
-                channel.send(PacketDistributor.TRACKING_ENTITY_AND_SELF.with(() -> entity), packet);
+                PacketDistributor.sendToPlayersTrackingEntityAndSelf(entity, packet);
             }
         };
     }
-
 }

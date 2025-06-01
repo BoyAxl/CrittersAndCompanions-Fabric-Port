@@ -4,9 +4,8 @@ import com.github.eterdelta.crittersandcompanions.CrittersAndCompanions;
 import com.github.eterdelta.crittersandcompanions.entity.RedPandaEntity;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
-import software.bernie.geckolib.constant.DataTickets;
-import software.bernie.geckolib.animatable.model.CoreGeoBone;
 import software.bernie.geckolib.animation.AnimationState;
+import software.bernie.geckolib.constant.DataTickets;
 import software.bernie.geckolib.model.GeoModel;
 import software.bernie.geckolib.model.data.EntityModelData;
 
@@ -42,7 +41,7 @@ public class RedPandaModel extends GeoModel<RedPandaEntity> {
         super.setCustomAnimations(animatable, instanceId, animationState);
 
         EntityModelData data = animationState.getData(DataTickets.ENTITY_MODEL_DATA);
-        CoreGeoBone neck = this.getAnimationProcessor().getBone("head");
+        var neck = this.getAnimationProcessor().getBone("head");
 
         if (!animatable.isSleeping() && !animatable.isInSittingPose()) {
             if (!animatable.isAlert()) {

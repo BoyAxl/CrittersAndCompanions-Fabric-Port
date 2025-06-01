@@ -16,9 +16,8 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.MobBucketItem;
 import net.minecraft.world.item.SpawnEggItem;
 import net.minecraft.world.level.material.Fluid;
-import net.minecraftforge.common.ForgeMod;
-import net.minecraftforge.common.ForgeSpawnEggItem;
-import net.minecraftforge.fml.ModList;
+import net.neoforged.fml.ModList;
+import net.neoforged.neoforge.common.DeferredSpawnEggItem;
 import net.neoforged.neoforge.common.NeoForgeMod;
 
 import java.util.function.Supplier;
@@ -43,12 +42,13 @@ public class ForgePlatformHelper implements IPlatformHelper {
 
     @Override
     public SpawnEggItem createSpawnEgg(Supplier<? extends EntityType<? extends Mob>> entityType, int primary, int secondary, Item.Properties properties) {
-        return new ForgeSpawnEggItem(entityType, primary, secondary, properties);
+        return new DeferredSpawnEggItem(entityType, primary, secondary, properties);
     }
 
     @Override
     public MobBucketItem createMobBucket(Supplier<? extends EntityType<? extends Mob>> entityType, Fluid fluid, SoundEvent emptySound, Item.Properties properties) {
-        return new MobBucketItem(entityType, () -> fluid, () -> emptySound, properties);
+        // TODO can remove?
+        return new MobBucketItem(entityType.get(), fluid, emptySound, properties);
     }
 
     @Override

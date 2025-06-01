@@ -1,18 +1,8 @@
 val mc_version: String by extra
 val geckolib_version: String by extra
 
-//plugins {
-//    id("dev.architectury.loom") version ("1.7-SNAPSHOT")
-//}
-
-common {
-//    applyVanillaGradle = false
-}
+common()
 
 dependencies {
-//    "minecraft"("com.mojang:minecraft:${mc_version}")
-//    "mappings"(loom.officialMojangMappings())
-
-//    modCompileOnly("software.bernie.geckolib:geckolib-fabric-${mc_version}:${geckolib_version}")
-    compileOnly("software.bernie.geckolib:geckolib-neoforge-${mc_version}:${geckolib_version}")
+    compileOnly("software.bernie.geckolib:geckolib-common-${mc_version}:${geckolib_version}")
 }

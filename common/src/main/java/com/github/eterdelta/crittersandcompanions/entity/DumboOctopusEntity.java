@@ -191,9 +191,9 @@ public class DumboOctopusEntity extends WaterAnimal implements GeoEntity, Bucket
 
     @Override
     public SpawnGroupData finalizeSpawn(ServerLevelAccessor levelAccessor, DifficultyInstance difficultyInstance, MobSpawnType mobSpawnType, SpawnGroupData spawnGroupData) {
-        super.finalizeSpawn(levelAccessor, difficultyInstance, mobSpawnType, spawnGroupData);
+        if (mobSpawnType == MobSpawnType.BUCKET) return spawnGroupData;
         this.setVariant(this.random.nextInt(0, 4));
-        return spawnGroupData;
+        return super.finalizeSpawn(levelAccessor, difficultyInstance, mobSpawnType, spawnGroupData);
     }
 
     private PlayState predicate(AnimationState<?> event) {
