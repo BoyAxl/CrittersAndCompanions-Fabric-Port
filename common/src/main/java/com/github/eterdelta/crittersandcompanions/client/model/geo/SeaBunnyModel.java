@@ -3,8 +3,8 @@ package com.github.eterdelta.crittersandcompanions.client.model.geo;
 import com.github.eterdelta.crittersandcompanions.CrittersAndCompanions;
 import com.github.eterdelta.crittersandcompanions.entity.SeaBunnyEntity;
 import net.minecraft.resources.ResourceLocation;
-import software.bernie.geckolib.constant.DataTickets;
 import software.bernie.geckolib.animation.AnimationState;
+import software.bernie.geckolib.constant.DataTickets;
 import software.bernie.geckolib.model.DefaultedEntityGeoModel;
 import software.bernie.geckolib.model.data.EntityModelData;
 
@@ -38,4 +38,3 @@ public class SeaBunnyModel extends DefaultedEntityGeoModel<SeaBunnyEntity> {
         }
     }
 }
-

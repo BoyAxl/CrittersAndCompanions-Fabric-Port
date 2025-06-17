@@ -1,6 +1,8 @@
 package com.github.eterdelta.crittersandcompanions.platform.service;
 
 import com.github.eterdelta.crittersandcompanions.platform.RegistryHelper;
+import java.util.function.Supplier;
+import java.util.stream.Stream;
 import net.minecraft.core.Holder;
 import net.minecraft.core.Registry;
 import net.minecraft.resources.ResourceKey;
@@ -11,9 +13,6 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.SpawnEggItem;
-
-import java.util.function.Supplier;
-import java.util.stream.Stream;
 
 public interface IPlatformHelper {
 

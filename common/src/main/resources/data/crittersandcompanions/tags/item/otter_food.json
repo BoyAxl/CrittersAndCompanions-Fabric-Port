@@ -1,7 +1,7 @@
 {
-    "replace": false,
-    "values": [
-        "#minecraft:fishes",
-        "crittersandcompanions:clam"
-    ]
+  "replace": false,
+  "values": [
+    "#minecraft:fishes",
+    "crittersandcompanions:clam"
+  ]
 }

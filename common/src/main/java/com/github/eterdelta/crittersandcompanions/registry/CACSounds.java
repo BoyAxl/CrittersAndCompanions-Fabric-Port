@@ -5,7 +5,6 @@ import com.github.eterdelta.crittersandcompanions.platform.RegistryEntry;
 import com.github.eterdelta.crittersandcompanions.platform.RegistryHelper;
 import com.github.eterdelta.crittersandcompanions.platform.Services;
 import net.minecraft.core.registries.Registries;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvent;
 
 public class CACSounds {

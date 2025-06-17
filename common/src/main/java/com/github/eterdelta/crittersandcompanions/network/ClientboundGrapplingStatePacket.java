@@ -3,14 +3,13 @@ package com.github.eterdelta.crittersandcompanions.network;
 import com.github.eterdelta.crittersandcompanions.CrittersAndCompanions;
 import com.github.eterdelta.crittersandcompanions.entity.GrapplingHookEntity;
 import com.github.eterdelta.crittersandcompanions.extension.IGrapplingState;
+import java.util.OptionalInt;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.world.entity.player.Player;
-
-import java.util.OptionalInt;
 
 public record ClientboundGrapplingStatePacket(OptionalInt hook, int playerId) implements CustomPacketPayload {
 

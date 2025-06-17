@@ -1,6 +1,7 @@
 package com.github.eterdelta.crittersandcompanions.platform;
 
 import com.github.eterdelta.crittersandcompanions.CrittersAndCompanions;
+import java.util.function.Supplier;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
@@ -10,8 +11,6 @@ import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModLoadingContext;
 import net.neoforged.neoforge.event.BuildCreativeModeTabContentsEvent;
 import net.neoforged.neoforge.registries.DeferredRegister;
-
-import java.util.function.Supplier;
 
 public class ForgeRegistryHelper<T> implements RegistryHelper<T> {
 

@@ -3,6 +3,8 @@ package com.github.eterdelta.crittersandcompanions.platform;
 import com.github.eterdelta.crittersandcompanions.compat.TrinketsCompat;
 import com.github.eterdelta.crittersandcompanions.platform.service.IPlatformHelper;
 import io.github.fabricators_of_create.porting_lib.attributes.PortingLibAttributes;
+import java.util.function.Supplier;
+import java.util.stream.Stream;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.core.Holder;
 import net.minecraft.core.Registry;
@@ -15,9 +17,6 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.SpawnEggItem;
-
-import java.util.function.Supplier;
-import java.util.stream.Stream;
 
 public class FabricPlatformHelper implements IPlatformHelper {
 

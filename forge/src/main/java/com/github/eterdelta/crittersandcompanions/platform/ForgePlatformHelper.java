@@ -2,6 +2,8 @@ package com.github.eterdelta.crittersandcompanions.platform;
 
 import com.github.eterdelta.crittersandcompanions.compat.CuriosCompat;
 import com.github.eterdelta.crittersandcompanions.platform.service.IPlatformHelper;
+import java.util.function.Supplier;
+import java.util.stream.Stream;
 import net.minecraft.core.Holder;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.Registries;
@@ -16,9 +18,6 @@ import net.minecraft.world.item.SpawnEggItem;
 import net.neoforged.fml.ModList;
 import net.neoforged.neoforge.common.DeferredSpawnEggItem;
 import net.neoforged.neoforge.common.NeoForgeMod;
-
-import java.util.function.Supplier;
-import java.util.stream.Stream;
 
 public class ForgePlatformHelper implements IPlatformHelper {
 

@@ -1,6 +1,7 @@
 package com.github.eterdelta.crittersandcompanions.platform;
 
 import com.github.eterdelta.crittersandcompanions.platform.service.INetwork;
+import java.util.function.Consumer;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
@@ -11,8 +12,6 @@ import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.server.level.ServerChunkCache;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
-
-import java.util.function.Consumer;
 
 public class FabricNetwork implements INetwork {
 

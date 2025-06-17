@@ -5,8 +5,14 @@
   "compatibilityLevel": "JAVA_17",
   "refmap": "${mod_id}.refmap.json",
   "mixins": [
-    "DrownedMixin", "EntityAccessor", "LivingEntityMixin", "NearestAttackableTargetGoalMixin",
-    "NeutralMobsMixin", "PlayerMixin", "SpawnPlacementsAccessor", "ZombifiedPiglinMixin"
+    "DrownedMixin",
+    "EntityAccessor",
+    "LivingEntityMixin",
+    "NearestAttackableTargetGoalMixin",
+    "NeutralMobsMixin",
+    "PlayerMixin",
+    "SpawnPlacementsAccessor",
+    "ZombifiedPiglinMixin",
     "DrownedMixin",
     "EntityAccessor",
     "LivingEntityMixin",
