@@ -7,8 +7,21 @@
   "mixins": [
     "DrownedMixin", "EntityAccessor", "LivingEntityMixin", "NearestAttackableTargetGoalMixin",
     "NeutralMobsMixin", "PlayerMixin", "SpawnPlacementsAccessor", "ZombifiedPiglinMixin"
+    "DrownedMixin",
+    "EntityAccessor",
+    "LivingEntityMixin",
+    "MobMixin",
+    "NearestAttackableTargetGoalMixin",
+    "NeutralMobsMixin",
+    "PlayerMixin",
+    "SpawnPlacementsAccessor",
+    "ZombifiedPiglinMixin"
   ],
-  "client": ["ClientPacketListenerMixin", "ItemPropertiesAccessor", "LivingEntityRendererMixin"],
+  "client": [
+    "ClientPacketListenerMixin",
+    "ItemPropertiesAccessor",
+    "LivingEntityRendererMixin"
+  ],
   "injectors": {
     "defaultRequire": 1
   }
