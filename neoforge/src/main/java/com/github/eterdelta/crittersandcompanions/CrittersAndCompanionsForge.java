@@ -1,5 +1,7 @@
 package com.github.eterdelta.crittersandcompanions;
 
+import static com.github.eterdelta.crittersandcompanions.CrittersAndCompanions.MODID;
+
 import com.github.eterdelta.crittersandcompanions.handler.PlayerHandler;
 import com.github.eterdelta.crittersandcompanions.platform.ForgeNetwork;
 import net.minecraft.network.chat.Component;
@@ -21,8 +23,6 @@ import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
 import net.neoforged.neoforge.event.tick.PlayerTickEvent;
 import net.neoforged.neoforge.registries.DeferredRegister;
 import net.neoforged.neoforge.registries.NeoForgeRegistries;
-
-import static com.github.eterdelta.crittersandcompanions.CrittersAndCompanions.MODID;
 
 @Mod(MODID)
 @EventBusSubscriber(modid = MODID, bus = EventBusSubscriber.Bus.MOD)
