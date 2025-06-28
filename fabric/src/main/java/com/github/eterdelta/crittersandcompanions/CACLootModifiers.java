@@ -1,8 +1,6 @@
 package com.github.eterdelta.crittersandcompanions;
 
 import com.github.eterdelta.crittersandcompanions.registry.CACItems;
-import java.util.function.BiConsumer;
-import java.util.function.Consumer;
 import net.fabricmc.fabric.api.loot.v3.FabricLootPoolBuilder;
 import net.fabricmc.fabric.api.loot.v3.LootTableEvents;
 import net.fabricmc.fabric.mixin.loot.LootTableAccessor;
@@ -10,10 +8,15 @@ import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.storage.loot.BuiltInLootTables;
+import net.minecraft.world.level.storage.loot.LootPool;
 import net.minecraft.world.level.storage.loot.LootTable;
 import net.minecraft.world.level.storage.loot.entries.LootItem;
 import net.minecraft.world.level.storage.loot.functions.SetItemCountFunction;
+import net.minecraft.world.level.storage.loot.predicates.LootItemRandomChanceCondition;
 import net.minecraft.world.level.storage.loot.providers.number.ConstantValue;
+
+import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 
 public class CACLootModifiers {
 
@@ -27,6 +30,19 @@ public class CACLootModifiers {
 
         addEntriesTo(EntityType.DROWNED.getDefaultLootTable(), 0, builder -> {
             builder.accept(10, new ItemStack(CACItems.CLAM.get()));
+        });
+
+        LootTableEvents.MODIFY.register((key, builder, source, provider) -> {
+            if (
+                    key.equals(BuiltInLootTables.SHIPWRECK_TREASURE)
+                            || key.equals(BuiltInLootTables.UNDERWATER_RUIN_SMALL)
+                            || key.equals(BuiltInLootTables.UNDERWATER_RUIN_BIG)
+            ) builder.withPool(
+                    LootPool.lootPool()
+                            .setRolls(ConstantValue.exactly(1F))
+                            .when(LootItemRandomChanceCondition.randomChance(0.1F))
+                            .add(LootItem.lootTableItem(CACItems.CLAM.get()))
+            );
         });
     }
 

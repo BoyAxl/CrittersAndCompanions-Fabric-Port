@@ -1,7 +1,5 @@
 package com.github.eterdelta.crittersandcompanions;
 
-import static com.github.eterdelta.crittersandcompanions.CrittersAndCompanions.MODID;
-
 import com.github.eterdelta.crittersandcompanions.handler.PlayerHandler;
 import com.github.eterdelta.crittersandcompanions.platform.ForgeNetwork;
 import net.minecraft.network.chat.Component;
@@ -24,6 +22,8 @@ import net.neoforged.neoforge.event.tick.PlayerTickEvent;
 import net.neoforged.neoforge.registries.DeferredRegister;
 import net.neoforged.neoforge.registries.NeoForgeRegistries;
 
+import static com.github.eterdelta.crittersandcompanions.CrittersAndCompanions.MODID;
+
 @Mod(MODID)
 @EventBusSubscriber(modid = MODID, bus = EventBusSubscriber.Bus.MOD)
 public class CrittersAndCompanionsForge {
@@ -37,6 +37,7 @@ public class CrittersAndCompanionsForge {
 
         var lootModifiers = DeferredRegister.create(NeoForgeRegistries.Keys.GLOBAL_LOOT_MODIFIER_SERIALIZERS, MODID);
         lootModifiers.register("replace_item", () -> ReplaceItemModifier.CODEC);
+        lootModifiers.register("add_item", () -> AddItemModifier.CODEC);
         lootModifiers.register(modBus);
     }
 
