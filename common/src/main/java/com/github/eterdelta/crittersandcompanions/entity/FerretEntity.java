@@ -7,7 +7,6 @@ import com.github.eterdelta.crittersandcompanions.registry.CACSounds;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.UUID;
-import net.minecraft.core.Holder;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.particles.BlockParticleOption;
 import net.minecraft.core.particles.ParticleTypes;
@@ -409,19 +408,18 @@ public class FerretEntity extends TamableAnimal implements GeoEntity {
                     }
                 }
                 if (this.digTime == 10) {
-                    var lootTables = FerretEntity.this.level().getServer().registryAccess().lookupOrThrow(Registries.LOOT_TABLE);
-                    lootTables.get(DIGGABLES).map(Holder::value).ifPresent(digTable -> {
-                        List<ItemStack> dugItems = digTable.getRandomItems(new LootParams.Builder((ServerLevel) level()).create(LootContextParamSets.EMPTY));
+                    var digTable = FerretEntity.this.level().getServer().reloadableRegistries().getLootTable(DIGGABLES);
+                    List<ItemStack> dugItems = digTable.getRandomItems(new LootParams.Builder((ServerLevel) level()).create(LootContextParamSets.EMPTY));
 
-                        if (!dugItems.isEmpty()) {
-                            FerretEntity.this.level().playSound(null, FerretEntity.this, SoundEvents.ITEM_PICKUP, SoundSource.BLOCKS, 0.1F, 1.2F);
-                        }
+                    if (!dugItems.isEmpty()) {
+                        FerretEntity.this.level().playSound(null, FerretEntity.this, SoundEvents.ITEM_PICKUP, SoundSource.BLOCKS, 0.1F, 1.2F);
+                    }
 
-                        for (ItemStack stack : dugItems) {
-                            ItemEntity itemEntity = new ItemEntity(FerretEntity.this.level(), FerretEntity.this.getX(), FerretEntity.this.getY(), FerretEntity.this.getZ(), stack);
-                            FerretEntity.this.level().addFreshEntity(itemEntity);
-                        }
-                    });
+                    for (ItemStack stack : dugItems) {
+                        ItemEntity itemEntity = new ItemEntity(FerretEntity.this.level(), FerretEntity.this.getX(), FerretEntity.this.getY(), FerretEntity.this.getZ(), stack);
+                        FerretEntity.this.level().addFreshEntity(itemEntity);
+                    }
+
                     ExperienceOrb xp = new ExperienceOrb(FerretEntity.this.level(), FerretEntity.this.getX(), FerretEntity.this.getY(), FerretEntity.this.getZ(), FerretEntity.this.random.nextInt(1, 6));
                     FerretEntity.this.level().addFreshEntity(xp);
                 }
