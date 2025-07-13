@@ -20,7 +20,6 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
-import net.minecraft.tags.BlockTags;
 import net.minecraft.tags.TagKey;
 import net.minecraft.util.Mth;
 import net.minecraft.world.DifficultyInstance;
@@ -60,11 +59,10 @@ import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.Items;
 import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.ServerLevelAccessor;
-import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.gameevent.GameEvent;
 import net.minecraft.world.level.storage.loot.LootParams;
@@ -84,7 +82,11 @@ public class FerretEntity extends TamableAnimal implements GeoEntity {
     private static final EntityDataAccessor<Boolean> SLEEPING = SynchedEntityData.defineId(FerretEntity.class, EntityDataSerializers.BOOLEAN);
     private static final EntityDataAccessor<Boolean> DIGGING = SynchedEntityData.defineId(FerretEntity.class, EntityDataSerializers.BOOLEAN);
     private static final EntityDataAccessor<Integer> VARIANT = SynchedEntityData.defineId(FerretEntity.class, EntityDataSerializers.INT);
+
     private static final TagKey<Item> FOODS_TAG = TagKey.create(Registries.ITEM, CrittersAndCompanions.createId("ferret_food"));
+    private static final TagKey<Item> TEMPT_TAG = TagKey.create(Registries.ITEM, CrittersAndCompanions.createId("ferret_tempt_items"));
+    private static final TagKey<Block> DIG_GROUNDS_TAG = TagKey.create(Registries.BLOCK, CrittersAndCompanions.createId("ferret_dig_grounds"));
+
     private static final ResourceKey<LootTable> DIGGABLES = ResourceKey.create(Registries.LOOT_TABLE, CrittersAndCompanions.createId("gameplay/digging"));
     private final AnimatableInstanceCache cache = GeckoLibUtil.createInstanceCache(this);
 
@@ -118,7 +120,7 @@ public class FerretEntity extends TamableAnimal implements GeoEntity {
         this.goalSelector.addGoal(5, new AvoidEntityGoal<>(this, LivingEntity.class, 8.0F, 1.6D, 1.4D, (livingEntity) -> livingEntity.is(this.getLastHurtByMob()) && !livingEntity.is(this.getOwner())));
         this.goalSelector.addGoal(6, new BreedGoal(this, 1.25D));
         this.goalSelector.addGoal(7, new MeleeAttackGoal(this, 1.5D, true));
-        this.goalSelector.addGoal(8, new TemptGoal(this, 1.0D, Ingredient.of(FOODS_TAG), false));
+        this.goalSelector.addGoal(8, new TemptGoal(this, 1.0D, Ingredient.of(TEMPT_TAG), false));
         this.goalSelector.addGoal(9, new FollowOwnerGoal(this, 1.0D, 10.0F, 2.0F));
         this.goalSelector.addGoal(10, new FollowParentGoal(this, 1.0D));
         this.goalSelector.addGoal(11, new WaterAvoidingRandomStrollGoal(this, 1.0D));
@@ -186,60 +188,70 @@ public class FerretEntity extends TamableAnimal implements GeoEntity {
 
     @Override
     public InteractionResult mobInteract(Player player, InteractionHand interactionHand) {
-        if (!this.isSleeping()) {
-            ItemStack handStack = player.getItemInHand(interactionHand);
+        if (isSleeping()) return InteractionResult.PASS;
 
-            if (!this.isTame() && handStack.is(Items.RABBIT)) {
-                if (!player.getAbilities().instabuild) {
-                    handStack.shrink(1);
-                }
-                if (!this.level().isClientSide()) {
-                    if (this.random.nextInt(10) == 0 && Services.EVENTS.canTame(this, player)) {
-                        this.tame(player);
-                        this.level().broadcastEntityEvent(this, (byte) 7);
-                    } else {
-                        this.level().broadcastEntityEvent(this, (byte) 6);
-                    }
-                }
-                return InteractionResult.sidedSuccess(this.level().isClientSide());
-            } else if (this.isTame() && this.isOwnedBy(player)) {
-                if (!this.level().isClientSide()) {
-                    if (handStack.is(Items.CHICKEN) && !this.isBaby() && !this.isInSittingPose()) {
-                        if (this.digCooldown <= 0) {
-                            this.stateToDig = this.level().getBlockState(this.blockPosition().below());
+        ItemStack handStack = player.getItemInHand(interactionHand);
 
-                            if (stateToDig.is(BlockTags.DIRT) || stateToDig.is(BlockTags.SAND) || stateToDig.is(Blocks.GRAVEL)) {
-                                this.setDigging(true);
-                                this.digCooldown = 6000;
-                                if (!player.getAbilities().instabuild) {
-                                    handStack.shrink(1);
-                                }
-                                return InteractionResult.sidedSuccess(level().isClientSide());
-                            } else {
-                                this.stateToDig = null;
-                            }
-                        }
-
-                        return InteractionResult.FAIL;
-                    }
+        if (handStack.is(TEMPT_TAG) && !isTame()) {
+            if (!player.getAbilities().instabuild) {
+                handStack.shrink(1);
+            }
+            if (!level().isClientSide()) {
+                if (random.nextInt(10) == 0 && Services.EVENTS.canTame(this, player)) {
+                    tame(player);
+                    level().broadcastEntityEvent(this, (byte) 7);
+                } else {
+                    level().broadcastEntityEvent(this, (byte) 6);
                 }
-                if (!this.isFood(handStack)) {
-                    this.setOrderedToSit(!this.isOrderedToSit());
-                    return InteractionResult.sidedSuccess(this.level().isClientSide());
-                } else if (this.getHealth() < this.getMaxHealth()) {
-                    this.gameEvent(GameEvent.EAT, this);
+            }
+
+            return InteractionResult.sidedSuccess(level().isClientSide());
+        }
+
+        if (isTame() && isOwnedBy(player)) {
+            var digResult = startDigging(player, handStack);
+            if (digResult != InteractionResult.PASS) return digResult;
+
+            if (isFood(handStack)) {
+                if (getHealth() < getMaxHealth()) {
+                    gameEvent(GameEvent.EAT, this);
                     var food = handStack.get(DataComponents.FOOD);
-                    if (food != null) this.heal(food.nutrition());
+                    if (food != null) heal(food.nutrition());
                     if (!player.getAbilities().instabuild) {
                         handStack.shrink(1);
                     }
-                    return InteractionResult.sidedSuccess(this.level().isClientSide());
+                    return InteractionResult.sidedSuccess(level().isClientSide());
+                }
+            } else {
+                setOrderedToSit(!isOrderedToSit());
+                return InteractionResult.sidedSuccess(level().isClientSide());
+            }
+        }
+
+        return super.mobInteract(player, interactionHand);
+    }
+
+    private InteractionResult startDigging(Player player, ItemStack handStack) {
+        if (handStack.is(TEMPT_TAG) && !isBaby() && !isInSittingPose()) {
+            if (digCooldown <= 0) {
+                stateToDig = level().getBlockState(blockPosition().below());
+
+                if (stateToDig.is(DIG_GROUNDS_TAG)) {
+                    setDigging(true);
+                    digCooldown = 6000;
+                    if (!player.getAbilities().instabuild) {
+                        handStack.shrink(1);
+                    }
+                    return InteractionResult.sidedSuccess(level().isClientSide());
+                } else {
+                    stateToDig = null;
                 }
             }
-            return super.mobInteract(player, interactionHand);
-        } else {
-            return InteractionResult.PASS;
+
+            return InteractionResult.FAIL;
         }
+
+        return InteractionResult.PASS;
     }
 
     @Override
