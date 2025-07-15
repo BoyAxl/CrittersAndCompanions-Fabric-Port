@@ -12,6 +12,7 @@ import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.food.Foods;
+import net.minecraft.world.item.ArmorMaterials;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.Items;
@@ -42,9 +43,9 @@ public class CACItems {
     public static final RegistryEntry<Item> KOI_FISH_BUCKET = ITEMS.register("koi_fish_bucket", () -> new MobBucketItem(CACEntities.KOI_FISH.get(), Fluids.WATER, SoundEvents.BUCKET_EMPTY_FISH, (new Item.Properties()).stacksTo(1).component(DataComponents.BUCKET_ENTITY_DATA, CustomData.EMPTY)));
     public static final RegistryEntry<Item> SEA_BUNNY_BUCKET = ITEMS.register("sea_bunny_bucket", () -> new MobBucketItem(CACEntities.SEA_BUNNY.get(), Fluids.WATER,SoundEvents.BUCKET_EMPTY_FISH, (new Item.Properties()).stacksTo(1).component(DataComponents.BUCKET_ENTITY_DATA, CustomData.EMPTY)));
 
-    public static final RegistryEntry<Item> DIAMOND_DRAGONFLY_ARMOR = ITEMS.register("diamond_dragonfly_armor", () -> new DragonflyArmorItem(16, "diamond", (new Item.Properties()).stacksTo(1)));
-    public static final RegistryEntry<Item> GOLD_DRAGONFLY_ARMOR = ITEMS.register("gold_dragonfly_armor", () -> new DragonflyArmorItem(8, "gold", (new Item.Properties()).stacksTo(1)));
-    public static final RegistryEntry<Item> IRON_DRAGONFLY_ARMOR = ITEMS.register("iron_dragonfly_armor", () -> new DragonflyArmorItem(4, "iron", (new Item.Properties()).stacksTo(1)));
+    public static final RegistryEntry<Item> DIAMOND_DRAGONFLY_ARMOR = ITEMS.register("diamond_dragonfly_armor", () -> new DragonflyArmorItem(ArmorMaterials.DIAMOND, "diamond", (new Item.Properties()).stacksTo(1)));
+    public static final RegistryEntry<Item> GOLD_DRAGONFLY_ARMOR = ITEMS.register("gold_dragonfly_armor", () -> new DragonflyArmorItem(ArmorMaterials.GOLD, "gold", (new Item.Properties()).stacksTo(1)));
+    public static final RegistryEntry<Item> IRON_DRAGONFLY_ARMOR = ITEMS.register("iron_dragonfly_armor", () -> new DragonflyArmorItem(ArmorMaterials.IRON, "iron", (new Item.Properties()).stacksTo(1)));
 
     public static final RegistryEntry<Item> DRAGONFLY_SPAWN_EGG = ITEMS.register("dragonfly_spawn_egg", () -> Services.PLATFORM.createSpawnEgg(CACEntities.DRAGONFLY, 0x08EECF, 0xD3FF96, (new Item.Properties())));
     public static final RegistryEntry<Item> FERRET_SPAWN_EGG = ITEMS.register("ferret_spawn_egg", () -> Services.PLATFORM.createSpawnEgg(CACEntities.FERRET, 0xC5AC88, 0x37212D, (new Item.Properties())));

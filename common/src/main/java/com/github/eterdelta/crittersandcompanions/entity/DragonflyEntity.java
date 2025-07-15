@@ -20,6 +20,7 @@ import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.MobSpawnType;
 import net.minecraft.world.entity.MoverType;
 import net.minecraft.world.entity.TamableAnimal;
+import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.ai.control.FlyingMoveControl;
@@ -159,9 +160,6 @@ public class DragonflyEntity extends TamableAnimal implements GeoEntity {
             } else if (this.isOwnedBy(player)) {
                 if (!this.level().isClientSide()) {
                     if (handStack.getItem() instanceof DragonflyArmorItem armorItem && this.getArmor().isEmpty()) {
-                        // TODO use attribute on item directly?
-                        this.getAttribute(Attributes.MAX_HEALTH).setBaseValue(armorItem.getHealthBuff());
-                        this.setHealth(armorItem.getHealthBuff());
                         this.setArmor(handStack.copy());
                         handStack.shrink(1);
                         if (!player.getAbilities().instabuild) {
@@ -170,8 +168,6 @@ public class DragonflyEntity extends TamableAnimal implements GeoEntity {
                         this.playSound(SoundEvents.ARMOR_EQUIP_GENERIC.value(), 0.4F, 1.5F);
 
                     } else if (player.isCrouching() && !this.getArmor().isEmpty()) {
-                        this.getAttribute(Attributes.MAX_HEALTH).setBaseValue(8.0D);
-                        this.setHealth(8.0F);
                         this.level().addFreshEntity(new ItemEntity(this.level(), this.getX(), this.getY(), this.getZ(), this.getArmor().copy()));
                         this.setArmor(ItemStack.EMPTY);
                         this.playSound(SoundEvents.ITEM_PICKUP, 0.2F, 1.0F);
@@ -204,11 +200,12 @@ public class DragonflyEntity extends TamableAnimal implements GeoEntity {
     @Override
     public void setTame(boolean tame, boolean sideEffects) {
         super.setTame(tame, sideEffects);
+        var tameModifier = CrittersAndCompanions.createId("tamed_health_boost");
         if (tame && sideEffects) {
-            this.getAttribute(Attributes.MAX_HEALTH).setBaseValue(8.0D);
-            this.setHealth(8.0F);
+            getAttribute(Attributes.MAX_HEALTH)
+                    .addOrReplacePermanentModifier(new AttributeModifier(tameModifier, 4.0, AttributeModifier.Operation.ADD_VALUE));
         } else {
-            this.getAttribute(Attributes.MAX_HEALTH).setBaseValue(4.0D);
+            getAttribute(Attributes.MAX_HEALTH).removeModifier(tameModifier);
         }
     }
 
