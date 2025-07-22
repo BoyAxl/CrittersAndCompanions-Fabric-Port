@@ -3,6 +3,7 @@ package com.github.eterdelta.crittersandcompanions;
 import static com.github.eterdelta.crittersandcompanions.CrittersAndCompanions.MODID;
 
 import com.github.eterdelta.crittersandcompanions.handler.PlayerHandler;
+import com.github.eterdelta.crittersandcompanions.platform.ForgeConfigs;
 import com.github.eterdelta.crittersandcompanions.platform.ForgeNetwork;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
@@ -12,6 +13,7 @@ import net.minecraft.server.packs.repository.PackSource;
 import net.minecraft.world.item.context.UseOnContext;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent;
@@ -28,9 +30,10 @@ import net.neoforged.neoforge.registries.NeoForgeRegistries;
 @EventBusSubscriber(modid = MODID, bus = EventBusSubscriber.Bus.MOD)
 public class CrittersAndCompanionsForge {
 
-    public CrittersAndCompanionsForge(IEventBus modBus) {
+    public CrittersAndCompanionsForge(ModContainer container, IEventBus modBus) {
         CrittersAndCompanions.init();
         ForgeNetwork.register(modBus);
+        ForgeConfigs.register(container);
 
         modBus.addListener((FMLCommonSetupEvent event) -> event.enqueueWork(CrittersAndCompanions::setup));
         modBus.addListener((FMLClientSetupEvent event) -> event.enqueueWork(CrittersAndCompanionsClient::init));

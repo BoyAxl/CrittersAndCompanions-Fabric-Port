@@ -1,6 +1,7 @@
 package com.github.eterdelta.crittersandcompanions;
 
 import com.github.eterdelta.crittersandcompanions.handler.PlayerHandler;
+import com.github.eterdelta.crittersandcompanions.platform.FabricConfigs;
 import io.github.fabricators_of_create.porting_lib.entity.events.player.PlayerInteractEvent;
 import io.github.fabricators_of_create.porting_lib.entity.events.tick.PlayerTickEvent;
 import net.fabricmc.api.ModInitializer;
@@ -33,6 +34,7 @@ public class CrittersAndCompanionsFabric implements ModInitializer {
 
         CACWorldGen.register();
         CACLootModifiers.register();
+        FabricConfigs.register();
     }
 
 }
