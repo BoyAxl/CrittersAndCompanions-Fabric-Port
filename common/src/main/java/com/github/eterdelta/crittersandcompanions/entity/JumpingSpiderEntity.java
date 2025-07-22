@@ -195,4 +195,12 @@ public class JumpingSpiderEntity extends TamableAnimal implements GeoEntity {
         return !effect.is(MobEffects.POISON) && super.canBeAffected(effect);
     }
 
+    @Override
+    public boolean wantsToAttack(LivingEntity target, LivingEntity owner) {
+        if (target instanceof TamableAnimal tamable) {
+            return !tamable.isTame() || tamable.getOwner() != owner;
+        }
+
+        return super.wantsToAttack(target, owner);
+    }
 }
