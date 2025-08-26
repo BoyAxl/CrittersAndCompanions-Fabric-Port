@@ -57,6 +57,8 @@ import net.minecraft.world.entity.animal.Chicken;
 import net.minecraft.world.entity.animal.Rabbit;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.DyeColor;
+import net.minecraft.world.item.DyeItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Ingredient;
@@ -68,6 +70,7 @@ import net.minecraft.world.level.gameevent.GameEvent;
 import net.minecraft.world.level.storage.loot.LootParams;
 import net.minecraft.world.level.storage.loot.LootTable;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParamSets;
+import org.jetbrains.annotations.Nullable;
 import software.bernie.geckolib.animatable.GeoEntity;
 import software.bernie.geckolib.animatable.instance.AnimatableInstanceCache;
 import software.bernie.geckolib.animation.AnimatableManager;
@@ -82,6 +85,7 @@ public class FerretEntity extends TamableAnimal implements GeoEntity {
     private static final EntityDataAccessor<Boolean> SLEEPING = SynchedEntityData.defineId(FerretEntity.class, EntityDataSerializers.BOOLEAN);
     private static final EntityDataAccessor<Boolean> DIGGING = SynchedEntityData.defineId(FerretEntity.class, EntityDataSerializers.BOOLEAN);
     private static final EntityDataAccessor<Integer> VARIANT = SynchedEntityData.defineId(FerretEntity.class, EntityDataSerializers.INT);
+    private static final EntityDataAccessor<Integer> DATA_COLLAR_COLOR = SynchedEntityData.defineId(FerretEntity.class, EntityDataSerializers.INT);
 
     private static final TagKey<Item> FOODS_TAG = TagKey.create(Registries.ITEM, CrittersAndCompanions.createId("ferret_food"));
     private static final TagKey<Item> TEMPT_TAG = TagKey.create(Registries.ITEM, CrittersAndCompanions.createId("ferret_tempt_items"));
@@ -108,6 +112,7 @@ public class FerretEntity extends TamableAnimal implements GeoEntity {
         builder.define(SLEEPING, false);
         builder.define(DIGGING, false);
         builder.define(VARIANT, 0);
+        builder.define(DATA_COLLAR_COLOR, DyeColor.RED.getId());
     }
 
     @Override
@@ -160,6 +165,8 @@ public class FerretEntity extends TamableAnimal implements GeoEntity {
     @Override
     public AgeableMob getBreedOffspring(ServerLevel level, AgeableMob ageableMob) {
         FerretEntity baby = CACEntities.FERRET.get().create(level);
+        if (baby == null) return null;
+
         UUID uuid = this.getOwnerUUID();
         if (ageableMob instanceof FerretEntity ferretEntity) {
             if (this.random.nextBoolean()) {
@@ -167,6 +174,9 @@ public class FerretEntity extends TamableAnimal implements GeoEntity {
             } else {
                 baby.setVariant(ferretEntity.getVariant());
             }
+
+            var color = random.nextBoolean() ? getCollarColor() : ferretEntity.getCollarColor();
+            if (color != null) baby.setCollarColor(color);
 
             if (uuid != null) {
                 baby.setOwnerUUID(uuid);
@@ -193,9 +203,7 @@ public class FerretEntity extends TamableAnimal implements GeoEntity {
         ItemStack handStack = player.getItemInHand(interactionHand);
 
         if (handStack.is(TEMPT_TAG) && !isTame()) {
-            if (!player.getAbilities().instabuild) {
-                handStack.shrink(1);
-            }
+            handStack.consume(1, player);
             if (!level().isClientSide()) {
                 if (random.nextInt(10) == 0 && Services.EVENTS.canTame(this, player)) {
                     tame(player);
@@ -212,14 +220,18 @@ public class FerretEntity extends TamableAnimal implements GeoEntity {
             var digResult = startDigging(player, handStack);
             if (digResult != InteractionResult.PASS) return digResult;
 
+            if (handStack.getItem() instanceof DyeItem dyeItem && getCollarColor() != dyeItem.getDyeColor()) {
+                setCollarColor(dyeItem.getDyeColor());
+                handStack.consume(1, player);
+                return InteractionResult.SUCCESS;
+            }
+
             if (isFood(handStack)) {
                 if (getHealth() < getMaxHealth()) {
                     gameEvent(GameEvent.EAT, this);
                     var food = handStack.get(DataComponents.FOOD);
                     if (food != null) heal(food.nutrition());
-                    if (!player.getAbilities().instabuild) {
-                        handStack.shrink(1);
-                    }
+                    handStack.consume(1, player);
                     return InteractionResult.sidedSuccess(level().isClientSide());
                 }
             } else {
@@ -239,9 +251,7 @@ public class FerretEntity extends TamableAnimal implements GeoEntity {
                 if (stateToDig.is(DIG_GROUNDS_TAG)) {
                     setDigging(true);
                     digCooldown = 6000;
-                    if (!player.getAbilities().instabuild) {
-                        handStack.shrink(1);
-                    }
+                    handStack.consume(1, player);
                     return InteractionResult.sidedSuccess(level().isClientSide());
                 } else {
                     stateToDig = null;
@@ -342,6 +352,16 @@ public class FerretEntity extends TamableAnimal implements GeoEntity {
 
     public void setVariant(int variant) {
         this.entityData.set(VARIANT, Mth.clamp(variant, 0, 1));
+    }
+
+    @Nullable
+    public DyeColor getCollarColor() {
+        if (!isTame()) return null;
+        return DyeColor.byId(entityData.get(DATA_COLLAR_COLOR));
+    }
+
+    private void setCollarColor(DyeColor color) {
+        entityData.set(DATA_COLLAR_COLOR, color.getId());
     }
 
     public class SleepGoal extends Goal {
