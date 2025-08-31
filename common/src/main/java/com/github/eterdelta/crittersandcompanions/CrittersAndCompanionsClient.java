@@ -18,18 +18,22 @@ import com.github.eterdelta.crittersandcompanions.mixin.ItemPropertiesAccessor;
 import com.github.eterdelta.crittersandcompanions.platform.event.RegisterEntityRenderers;
 import com.github.eterdelta.crittersandcompanions.registry.CACEntities;
 import com.github.eterdelta.crittersandcompanions.registry.CACItems;
+
+import java.util.HashMap;
 import java.util.function.BiConsumer;
 import java.util.function.Supplier;
+
 import net.minecraft.client.model.geom.ModelLayerLocation;
 import net.minecraft.client.model.geom.builders.LayerDefinition;
-import net.minecraft.client.renderer.item.ClampedItemPropertyFunction;
+import net.minecraft.client.renderer.item.ItemPropertyFunction;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.item.Item;
 import software.bernie.geckolib.renderer.GeoEntityRenderer;
 
 public class CrittersAndCompanionsClient {
 
-    private static final ClampedItemPropertyFunction BUCKET_VARIANT = (stack, clientLevel, entity, seed) -> {
+    private static final ItemPropertyFunction BUCKET_VARIANT = (stack, clientLevel, entity, seed) -> {
         var customData = stack.get(DataComponents.BUCKET_ENTITY_DATA);
         if (customData != null) {
             return customData.copyTag().getInt("Variant");
@@ -38,9 +42,13 @@ public class CrittersAndCompanionsClient {
         }
     };
 
+    private static void registerProperty(Item item, ResourceLocation id, ItemPropertyFunction function) {
+        ItemPropertiesAccessor.getPROPERTIES().computeIfAbsent(item, $ -> new HashMap<>()).put(id, function);
+    }
+
     public static void init() {
-        ItemPropertiesAccessor.invokeRegister(CACItems.DUMBO_OCTOPUS_BUCKET.get(), ResourceLocation.withDefaultNamespace("variant"), BUCKET_VARIANT);
-        ItemPropertiesAccessor.invokeRegister(CACItems.SEA_BUNNY_BUCKET.get(), ResourceLocation.withDefaultNamespace("variant"), BUCKET_VARIANT);
+        registerProperty(CACItems.DUMBO_OCTOPUS_BUCKET.get(), ResourceLocation.withDefaultNamespace("variant"), BUCKET_VARIANT);
+        registerProperty(CACItems.SEA_BUNNY_BUCKET.get(), ResourceLocation.withDefaultNamespace("variant"), BUCKET_VARIANT);
     }
 
     public static void registerEntityRenderers(RegisterEntityRenderers event) {
