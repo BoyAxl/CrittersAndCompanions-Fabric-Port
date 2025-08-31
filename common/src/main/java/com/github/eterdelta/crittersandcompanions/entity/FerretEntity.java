@@ -4,9 +4,11 @@ import com.github.eterdelta.crittersandcompanions.CrittersAndCompanions;
 import com.github.eterdelta.crittersandcompanions.platform.Services;
 import com.github.eterdelta.crittersandcompanions.registry.CACEntities;
 import com.github.eterdelta.crittersandcompanions.registry.CACSounds;
+
 import java.util.EnumSet;
 import java.util.List;
 import java.util.UUID;
+
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.particles.BlockParticleOption;
 import net.minecraft.core.particles.ParticleTypes;
@@ -126,7 +128,7 @@ public class FerretEntity extends TamableAnimal implements GeoEntity {
         this.goalSelector.addGoal(6, new BreedGoal(this, 1.25D));
         this.goalSelector.addGoal(7, new MeleeAttackGoal(this, 1.5D, true));
         this.goalSelector.addGoal(8, new TemptGoal(this, 1.0D, Ingredient.of(TEMPT_TAG), false));
-        this.goalSelector.addGoal(9, new FollowOwnerGoal(this, 1.0D, 10.0F, 2.0F));
+        this.goalSelector.addGoal(9, new FollowOwnerGoal(this, 1.5D, 10.0F, 2.0F));
         this.goalSelector.addGoal(10, new FollowParentGoal(this, 1.0D));
         this.goalSelector.addGoal(11, new WaterAvoidingRandomStrollGoal(this, 1.0D));
         this.goalSelector.addGoal(12, new LookAtPlayerGoal(this, Player.class, 8.0F));
@@ -307,15 +309,17 @@ public class FerretEntity extends TamableAnimal implements GeoEntity {
 
     private PlayState predicate(AnimationState<?> event) {
         if (this.isDigging()) {
-            event.getController().setAnimation(RawAnimation.begin().then("ferret_dig", Animation.LoopType.PLAY_ONCE));
+            event.getController().setAnimation(RawAnimation.begin().then("dig", Animation.LoopType.PLAY_ONCE));
         } else if (this.isInSittingPose()) {
-            event.getController().setAnimation(RawAnimation.begin().thenLoop("ferret_sit"));
+            event.getController().setAnimation(RawAnimation.begin().thenLoop("sit"));
         } else if (this.isSleeping()) {
-            event.getController().setAnimation(RawAnimation.begin().thenLoop("ferret_sleep"));
+            event.getController().setAnimation(RawAnimation.begin().thenLoop("sleep"));
+        } else if (isInWater()) {
+            event.getController().setAnimation(RawAnimation.begin().thenLoop("swim"));
         } else if (event.isMoving()) {
-            event.getController().setAnimation(RawAnimation.begin().thenLoop("ferret_run"));
+            event.getController().setAnimation(RawAnimation.begin().thenLoop("run"));
         } else {
-            event.getController().setAnimation(RawAnimation.begin().thenLoop("ferret_idle"));
+            event.getController().setAnimation(RawAnimation.begin().thenLoop("idle"));
         }
         return PlayState.CONTINUE;
     }
