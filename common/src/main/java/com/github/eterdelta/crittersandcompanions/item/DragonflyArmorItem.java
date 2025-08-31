@@ -26,8 +26,8 @@ public class DragonflyArmorItem extends Item {
         this.texture = tierName;
         this.attributes = Suppliers.memoize(() ->
             ItemAttributeModifiers.builder()
-                    .add(Attributes.ARMOR, new AttributeModifier(CrittersAndCompanions.createId("armor"), material.value().getDefense(ArmorItem.Type.CHESTPLATE), AttributeModifier.Operation.ADD_VALUE), EquipmentSlotGroup.ANY)
-                    .add(Attributes.ARMOR_TOUGHNESS, new AttributeModifier(CrittersAndCompanions.createId("toughness"), material.value().toughness(), AttributeModifier.Operation.ADD_VALUE), EquipmentSlotGroup.ANY)
+                    .add(Attributes.ARMOR, new AttributeModifier(CrittersAndCompanions.createId("armor"), material.value().getDefense(ArmorItem.Type.CHESTPLATE), AttributeModifier.Operation.ADD_VALUE), EquipmentSlotGroup.BODY)
+                    .add(Attributes.ARMOR_TOUGHNESS, new AttributeModifier(CrittersAndCompanions.createId("toughness"), material.value().toughness(), AttributeModifier.Operation.ADD_VALUE), EquipmentSlotGroup.BODY)
                     .build()
         );
     }
