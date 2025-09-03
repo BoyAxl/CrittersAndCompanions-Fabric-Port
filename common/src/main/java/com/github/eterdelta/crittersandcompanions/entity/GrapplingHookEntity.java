@@ -6,7 +6,6 @@ import com.github.eterdelta.crittersandcompanions.network.ClientboundGrapplingSt
 import com.github.eterdelta.crittersandcompanions.registry.CACEntities;
 import com.github.eterdelta.crittersandcompanions.registry.CACItems;
 import java.util.OptionalInt;
-
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.MoverType;
