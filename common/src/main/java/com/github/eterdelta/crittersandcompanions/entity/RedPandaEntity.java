@@ -4,10 +4,12 @@ import com.github.eterdelta.crittersandcompanions.CrittersAndCompanions;
 import com.github.eterdelta.crittersandcompanions.platform.Services;
 import com.github.eterdelta.crittersandcompanions.registry.CACEntities;
 import com.github.eterdelta.crittersandcompanions.registry.CACSounds;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.List;
+
 import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.syncher.EntityDataAccessor;
@@ -219,19 +221,21 @@ public class RedPandaEntity extends TamableAnimal implements GeoEntity {
 
     private PlayState predicate(AnimationState<?> event) {
         if (this.isAlert()) {
-            event.getController().setAnimation(RawAnimation.begin().then("red_panda_angry", Animation.LoopType.PLAY_ONCE));
+            event.getController().setAnimation(RawAnimation.begin().then("angry", Animation.LoopType.PLAY_ONCE));
         } else if (this.isInSittingPose()) {
-            event.getController().setAnimation(RawAnimation.begin().thenLoop("red_panda_sit"));
+            event.getController().setAnimation(RawAnimation.begin().thenLoop("sit"));
         } else if (this.isSleeping()) {
-            event.getController().setAnimation(RawAnimation.begin().thenLoop("red_panda_sleeping"));
+            event.getController().setAnimation(RawAnimation.begin().thenLoop("sleeping"));
+        } else if (isInWater()) {
+            event.getController().setAnimation(RawAnimation.begin().thenLoop("swim"));
         } else if (event.isMoving()) {
             if (this.getSpeed() >= 0.8F) {
-                event.getController().setAnimation(RawAnimation.begin().thenLoop("red_panda_run"));
+                event.getController().setAnimation(RawAnimation.begin().thenLoop("run"));
             } else {
-                event.getController().setAnimation(RawAnimation.begin().thenLoop("red_panda_walk"));
+                event.getController().setAnimation(RawAnimation.begin().thenLoop("walk"));
             }
         } else {
-            event.getController().setAnimation(RawAnimation.begin().thenLoop("red_panda_idle"));
+            event.getController().setAnimation(RawAnimation.begin().thenLoop("idle"));
         }
         return PlayState.CONTINUE;
     }
@@ -333,7 +337,7 @@ public class RedPandaEntity extends TamableAnimal implements GeoEntity {
 
         @Override
         public boolean canUse() {
-            if (!RedPandaEntity.this.isSleeping()) {
+            if (!RedPandaEntity.this.isSleeping() && ! RedPandaEntity.this.isInWater()) {
                 List<LivingEntity> nearAlerters = RedPandaEntity.this.level().getEntitiesOfClass(LivingEntity.class, RedPandaEntity.this.getBoundingBox().inflate(4.0D),
                         (livingEntity) -> RedPandaEntity.this.isTame() ? SCAREABLES.contains(livingEntity.getType()) && ((Mob) livingEntity).isAggressive() : livingEntity instanceof Player);
                 LivingEntity nearestAlerter = RedPandaEntity.this.level().getNearestEntity(nearAlerters, TargetingConditions.forNonCombat().range(4.0D), RedPandaEntity.this, RedPandaEntity.this.getX(), RedPandaEntity.this.getY(), RedPandaEntity.this.getZ());
