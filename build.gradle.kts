@@ -3,7 +3,8 @@ val mc_version: String by extra
 
 plugins {
     id("com.possible-triangle.core")
-    id("org.jetbrains.gradle.plugin.idea-ext") version("1.1.7")
+    id("com.possible-triangle.neoforge") apply false
+    id("com.possible-triangle.common") apply false
 }
 
 mod {
