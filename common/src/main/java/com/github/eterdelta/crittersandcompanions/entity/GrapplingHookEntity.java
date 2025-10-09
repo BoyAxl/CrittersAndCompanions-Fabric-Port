@@ -49,47 +49,54 @@ public class GrapplingHookEntity extends ThrowableItemProjectile {
             addedToWorld = true;
         }
 
-        if (!this.level().isClientSide() && (!this.isFocused() || this.getOwner().distanceToSqr(this) > 1048)) {
-            this.discard();
+        var offsetLengthSqr = distanceToSqr(getOwner());
+
+        var maxDistance = Services.CONFIGS.common().grapplingHookMaxDistance.get();
+        var maxDistanceSqr = maxDistance * maxDistance;
+        if (!level().isClientSide() && (!isFocused() || offsetLengthSqr > maxDistanceSqr)) {
+            discard();
             return;
         }
 
-        AABB collidableBox = this.getBoundingBox().inflate(0.1D);
-        Iterable<VoxelShape> collisions = this.level().getBlockCollisions(this, collidableBox);
+        var collidableBox = getBoundingBox().inflate(0.25D);
+        var collisions = level().getBlockCollisions(this, collidableBox);
 
-        isStick = false;
+        var willStick = false;
         for (VoxelShape shape : collisions) {
             if (!shape.isEmpty() && shape.bounds().intersects(collidableBox)) {
-                isStick = true;
+                willStick = true;
                 break;
             }
         }
 
-        if (isStick && !wasStick) {
-            stickLength = this.position().subtract(this.getOwner().position()).lengthSqr();
+        if (willStick && !isStick) {
+            stickLength = maxDistanceSqr;
             playSound(SoundEvents.SLIME_SQUISH);
         }
 
-        wasStick = isStick;
-
-        if (isStick && this.getOwner() != null) {
-            Vec3 offset = this.position().subtract(this.getOwner().position());
-            if (offset.lengthSqr() > stickLength) {
-                this.getOwner().setDeltaMovement(this.getOwner().getDeltaMovement().add(offset.scale(0.02D)));
-                this.getOwner().hurtMarked = true;
+        isStick = willStick;
+        if (isStick && getOwner() != null) {
+            if (offsetLengthSqr > stickLength) {
+                var direction = position().subtract(getOwner().position()).normalize();
+                var maxSpeed = Services.CONFIGS.common().grapplingHookMaxSpeed.get();
+                var scale = Math.min(maxSpeed, 0.01D * Math.sqrt(offsetLengthSqr));
+                if (scale >= 0) {
+                    getOwner().setDeltaMovement(getOwner().getDeltaMovement().add(direction.scale(scale)));
+                    getOwner().hurtMarked = true;
+                }
             }
-            this.setDeltaMovement(0.0D, 0.0D, 0.0D);
+            setDeltaMovement(0.0D, 0.0D, 0.0D);
         } else {
-            this.setDeltaMovement(this.getDeltaMovement().scale(0.98D));
-            this.setDeltaMovement(this.getDeltaMovement().add(0.0D, -0.03D, 0.0D));
+            setDeltaMovement(getDeltaMovement().scale(0.98D));
+            setDeltaMovement(getDeltaMovement().add(0.0D, -0.03D, 0.0D));
         }
-        this.move(MoverType.SELF, this.getDeltaMovement());
+        move(MoverType.SELF, getDeltaMovement());
     }
 
     @Override
     public void remove(RemovalReason removalReason) {
         super.remove(removalReason);
-        this.updateOwnerState();
+        updateOwnerState();
     }
 
     @Override
@@ -98,30 +105,31 @@ public class GrapplingHookEntity extends ThrowableItemProjectile {
     }
 
     public void pull() {
-        if (this.getOwner() != null) {
+        if (getOwner() != null) {
             if (isStick) {
-                this.getOwner().setDeltaMovement(this.position().subtract(this.getOwner().position())
-                        .multiply(0.25D, 0.2D, 0.25D)
-                        .add(0.0D, 0.25D, 0.0D)
-                );
+                var pullSpeed = Services.CONFIGS.common().grapplingHookSpeed.get() / 4;
+                var maxSpeed = Services.CONFIGS.common().grapplingHookMaxSpeed.get();
+                var direction = position().subtract(getOwner().position()).normalize();
+                var distance = distanceTo(getOwner());
+                getOwner().setDeltaMovement(direction.scale(Math.min(maxSpeed, pullSpeed * distance)));
             }
-            this.discard();
+            discard();
         }
     }
 
     public void updateOwnerState() {
-        if (!this.level().isClientSide() && this.getOwner() != null
-                && this.getOwner() instanceof Player player
-                && this.getOwner() instanceof IGrapplingState grapplingState) {
+        if (!level().isClientSide() && getOwner() != null
+                && getOwner() instanceof Player player
+                && getOwner() instanceof IGrapplingState grapplingState) {
 
-            grapplingState.setHook(this.isAlive() ? this : null);
+            grapplingState.setHook(isAlive() ? this : null);
             CACPacketHandler.GRAPPLING_STATE.sendToTracking(player,
-                    new ClientboundGrapplingStatePacket(this.isAlive() ? OptionalInt.of(this.getId()) : OptionalInt.empty(), player.getId()));
+                    new ClientboundGrapplingStatePacket(isAlive() ? OptionalInt.of(getId()) : OptionalInt.empty(), player.getId()));
         }
     }
 
     public boolean isFocused() {
-        if (this.getOwner() instanceof Player player) {
+        if (getOwner() instanceof Player player) {
             return ItemStack.isSameItemSameComponents(player.getMainHandItem(), getItem())
                     || ItemStack.isSameItemSameComponents(player.getOffhandItem(), getItem());
         }
