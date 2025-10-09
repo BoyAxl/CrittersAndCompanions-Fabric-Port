@@ -16,7 +16,6 @@ subprojects {
             content {
                 includeGroup("com.possible-triangle")
                 includeGroup("com.ninni.dye_depot")
-                includeGroup("io.github.fabricators_of_create.Porting-Lib")
             }
         }
 
@@ -28,12 +27,12 @@ subprojects {
             }
         }
 
-        //maven {
-        //    url = uri("https://mvn.devos.one/snapshots/")
-        //    content {
-        //        includeGroup("io.github.fabricators_of_create.Porting-Lib")
-        //    }
-        //}
+        maven {
+            url = uri("https://mvn.devos.one/snapshots/")
+            content {
+                includeGroup("io.github.fabricators_of_create.Porting-Lib")
+            }
+        }
 
         maven {
             url = uri("https://maven.jamieswhiteshirt.com/libs-release")
