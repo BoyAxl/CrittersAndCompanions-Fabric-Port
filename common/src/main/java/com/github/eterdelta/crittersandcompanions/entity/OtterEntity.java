@@ -23,6 +23,7 @@ import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.tags.FluidTags;
+import net.minecraft.tags.ItemTags;
 import net.minecraft.tags.TagKey;
 import net.minecraft.util.Mth;
 import net.minecraft.util.RandomSource;
@@ -110,7 +111,7 @@ public class OtterEntity extends Animal implements GeoEntity {
 
     @Override
     protected void registerGoals() {
-        this.goalSelector.addGoal(0, new OtterPanicGoal(this, 1.4F));
+        this.goalSelector.addGoal(0, new OtterPanicGoal(this, 1.6F));
         this.goalSelector.addGoal(1, new AvoidEntityGoal<>(this, Player.class, 32.0F, 0.9D, 1.5D, (livingEntity -> livingEntity.equals(this.getLastHurtMob()))));
         this.goalSelector.addGoal(2, new MeleeAttackGoal(this, 1.2D, true));
         this.goalSelector.addGoal(3, new GoToSurfaceGoal(60));
@@ -207,12 +208,7 @@ public class OtterEntity extends Animal implements GeoEntity {
                     if (this.eatDelay > 0) {
                         --this.eatDelay;
                     } else if (level() instanceof ServerLevel level) {
-                        Vec3 mouthPos = calculateMouthPos();
-                        level.sendParticles(new ItemParticleOption(ParticleTypes.ITEM, held.copy()), mouthPos.x(), mouthPos.y(), mouthPos.z(), 2, 0.0D, 0.1D, 0.0D, 0.05D);
-
-                        playSound(CACSounds.OTTER_EAT.get(), 1.2F, 1.0F);
-                        eatOrOpen(level, held);
-                        setEating(false);
+                        breakAndEat(level, held);
                     }
                 } else {
                     if (this.isInWater()) {
@@ -231,6 +227,22 @@ public class OtterEntity extends Animal implements GeoEntity {
                 --this.huntDelay;
             }
         }
+    }
+
+    private boolean breakingClamOnLand() {
+        var floating = isInWater() || isFloating();
+        return !floating && getMainHandItem().is(CACItems.CLAM.get());
+    }
+
+    private void breakAndEat(ServerLevel level, ItemStack held) {
+        Vec3 mouthPos = calculateMouthPos();
+        level.sendParticles(new ItemParticleOption(ParticleTypes.ITEM, held.copy()), mouthPos.x(), mouthPos.y(), mouthPos.z(), 2, 0.0D, 0.1D, 0.0D, 0.05D);
+        var sound = getMainHandItem().is(CACItems.CLAM.get()) && !breakingClamOnLand() ?
+                CACSounds.OTTER_CLAM_BREAK.get()
+                : CACSounds.OTTER_EAT.get();
+        playSound(sound, 1.2F, 1.0F);
+        eatOrOpen(level, held);
+        setEating(false);
     }
 
     public ItemStack eatOrOpen(Level level, ItemStack itemStack) {
@@ -386,7 +398,7 @@ public class OtterEntity extends Animal implements GeoEntity {
         }
 
         if (event.isMoving()) {
-            if (getDeltaMovement().length() >= 0.2F) {
+            if (getDeltaMovement().length() >= 0.18F) {
                 return RawAnimation.begin().thenLoop("run");
             } else {
                 return RawAnimation.begin().thenLoop("walk");
@@ -406,6 +418,7 @@ public class OtterEntity extends Animal implements GeoEntity {
             event.getController().setAnimation(RawAnimation.begin().then("floating_eat", Animation.LoopType.PLAY_ONCE));
             return PlayState.CONTINUE;
         }
+        event.getController().forceAnimationReset();
         return PlayState.STOP;
     }
 
@@ -446,6 +459,9 @@ public class OtterEntity extends Animal implements GeoEntity {
         if (this.isFood(this.getMainHandItem())) {
             this.eatDelay = this.getMainHandItem().is(CACItems.CLAM.get()) ? 45 : 12;
             this.setEating(true);
+            if (breakingClamOnLand()) {
+                playSound(CACSounds.OTTER_CLAM_BREAK_LAND.get(), 1.2F, 1.0F);
+            }
         }
     }
 
