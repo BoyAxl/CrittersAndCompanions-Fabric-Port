@@ -2,7 +2,9 @@ val mc_version: String by extra
 val geckolib_version: String by extra
 val forge_config_port_version: String by extra
 
-common()
+plugins {
+    id("com.possible-triangle.common")
+}
 
 dependencies {
     compileOnly("software.bernie.geckolib:geckolib-common-${mc_version}:${geckolib_version}")

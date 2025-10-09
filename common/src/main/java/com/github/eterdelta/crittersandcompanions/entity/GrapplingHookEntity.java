@@ -3,6 +3,7 @@ package com.github.eterdelta.crittersandcompanions.entity;
 import com.github.eterdelta.crittersandcompanions.extension.IGrapplingState;
 import com.github.eterdelta.crittersandcompanions.network.CACPacketHandler;
 import com.github.eterdelta.crittersandcompanions.network.ClientboundGrapplingStatePacket;
+import com.github.eterdelta.crittersandcompanions.platform.Services;
 import com.github.eterdelta.crittersandcompanions.registry.CACEntities;
 import com.github.eterdelta.crittersandcompanions.registry.CACItems;
 import java.util.OptionalInt;
@@ -14,13 +15,10 @@ import net.minecraft.world.entity.projectile.ThrowableItemProjectile;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.phys.AABB;
-import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.shapes.VoxelShape;
 
 public class GrapplingHookEntity extends ThrowableItemProjectile {
     protected boolean isStick;
-    protected boolean wasStick;
     protected double stickLength;
     private boolean addedToWorld;
 
@@ -70,7 +68,7 @@ public class GrapplingHookEntity extends ThrowableItemProjectile {
         }
 
         if (willStick && !isStick) {
-            stickLength = maxDistanceSqr;
+            stickLength = offsetLengthSqr;
             playSound(SoundEvents.SLIME_SQUISH);
         }
 

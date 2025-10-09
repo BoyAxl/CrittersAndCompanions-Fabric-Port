@@ -6,10 +6,12 @@ val curios_version: String by extra
 val pathfinding_renderer_version: String by extra
 val jade_version: String by extra
 
+plugins {
+    id("com.possible-triangle.neoforge")
+}
+
 neoforge {
     dependOn(project(":common"))
-
-    enableMixins()
 }
 
 dependencies {
