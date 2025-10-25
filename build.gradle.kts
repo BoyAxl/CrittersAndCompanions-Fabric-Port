@@ -1,14 +1,7 @@
-val mod_version: String by extra
-val mc_version: String by extra
-
 plugins {
     id("com.possible-triangle.core")
     id("com.possible-triangle.neoforge") apply false
     id("com.possible-triangle.common") apply false
-}
-
-mod {
-    version = "$mc_version-$mod_version"
 }
 
 subprojects {
