@@ -1,5 +1,9 @@
 # Critters and Companions - Fabric 26.1.2 Port
 
+<p align="center">
+  <img src="common/src/main/resources/logo.png" alt="Critters and Companions official logo" width="260">
+</p>
+
 This repository contains an unofficial Fabric port of **Critters and Companions** for:
 
 - Minecraft `26.1.2`
