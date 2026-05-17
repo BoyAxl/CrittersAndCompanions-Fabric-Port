@@ -8,7 +8,6 @@ import com.github.eterdelta.crittersandcompanions.registry.CACEntities;
 import com.github.eterdelta.crittersandcompanions.registry.CACSounds;
 import java.util.EnumSet;
 import java.util.List;
-import java.util.UUID;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.particles.BlockParticleOption;
 import net.minecraft.core.particles.ParticleTypes;
@@ -34,7 +33,7 @@ import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.ExperienceOrb;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
-import net.minecraft.world.entity.MobSpawnType;
+import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.SpawnGroupData;
 import net.minecraft.world.entity.TamableAnimal;
 import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
@@ -53,12 +52,13 @@ import net.minecraft.world.entity.ai.goal.TemptGoal;
 import net.minecraft.world.entity.ai.goal.WaterAvoidingRandomStrollGoal;
 import net.minecraft.world.entity.ai.goal.target.NearestAttackableTargetGoal;
 import net.minecraft.world.entity.animal.Animal;
-import net.minecraft.world.entity.animal.Chicken;
-import net.minecraft.world.entity.animal.Rabbit;
+import net.minecraft.world.entity.animal.chicken.Chicken;
+import net.minecraft.world.entity.animal.rabbit.Rabbit;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.DyeColor;
 import net.minecraft.world.item.DyeItem;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Ingredient;
@@ -67,19 +67,21 @@ import net.minecraft.world.level.ServerLevelAccessor;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.gameevent.GameEvent;
+import net.minecraft.world.level.storage.ValueInput;
+import net.minecraft.world.level.storage.ValueOutput;
 import net.minecraft.world.level.storage.loot.LootParams;
 import net.minecraft.world.level.storage.loot.LootTable;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParamSets;
 import org.jetbrains.annotations.Nullable;
-import software.bernie.geckolib.animatable.GeoEntity;
-import software.bernie.geckolib.animatable.instance.AnimatableInstanceCache;
-import software.bernie.geckolib.animation.AnimatableManager;
-import software.bernie.geckolib.animation.Animation;
-import software.bernie.geckolib.animation.AnimationController;
-import software.bernie.geckolib.animation.AnimationState;
-import software.bernie.geckolib.animation.PlayState;
-import software.bernie.geckolib.animation.RawAnimation;
-import software.bernie.geckolib.util.GeckoLibUtil;
+import com.geckolib.animatable.GeoEntity;
+import com.geckolib.animatable.instance.AnimatableInstanceCache;
+import com.geckolib.animatable.manager.AnimatableManager;
+import com.geckolib.animation.AnimationController;
+import com.geckolib.animation.state.AnimationTest;
+import com.geckolib.animation.object.LoopType;
+import com.geckolib.animation.object.PlayState;
+import com.geckolib.animation.RawAnimation;
+import com.geckolib.util.GeckoLibUtil;
 
 public class FerretEntity extends TamableAnimal implements GeoEntity {
     private static final EntityDataAccessor<Boolean> SLEEPING = SynchedEntityData.defineId(FerretEntity.class, EntityDataSerializers.BOOLEAN);
@@ -103,7 +105,7 @@ public class FerretEntity extends TamableAnimal implements GeoEntity {
     }
 
     public static AttributeSupplier.Builder createAttributes() {
-        return Mob.createMobAttributes().add(Attributes.MAX_HEALTH, 16.0D).add(Attributes.MOVEMENT_SPEED, 0.28D).add(Attributes.ATTACK_DAMAGE, 3.0D);
+        return Mob.createMobAttributes().add(Attributes.MAX_HEALTH, 16.0D).add(Attributes.MOVEMENT_SPEED, 0.28D).add(Attributes.ATTACK_DAMAGE, 3.0D).add(Attributes.TEMPT_RANGE, 10.0D);
     }
 
     @Override
@@ -125,44 +127,42 @@ public class FerretEntity extends TamableAnimal implements GeoEntity {
         this.goalSelector.addGoal(5, new AvoidEntityGoal<>(this, LivingEntity.class, 8.0F, 1.6D, 1.4D, (livingEntity) -> livingEntity.is(this.getLastHurtByMob()) && !livingEntity.is(this.getOwner())));
         this.goalSelector.addGoal(6, new BreedGoal(this, 1.25D));
         this.goalSelector.addGoal(7, new MeleeAttackGoal(this, 1.5D, true));
-        this.goalSelector.addGoal(8, new TemptGoal(this, 1.0D, Ingredient.of(TEMPT_TAG), false));
+        this.goalSelector.addGoal(8, new TemptGoal(this, 1.0D, this.ingredient(TEMPT_TAG), false));
         this.goalSelector.addGoal(7, new SprintingFollowParentGoal(this, 1.4D, 10.0F, 5.0F, 2.0F));
         this.goalSelector.addGoal(10, new TameableFollowParentGoal(this, 1.0D));
         this.goalSelector.addGoal(11, new WaterAvoidingRandomStrollGoal(this, 1.0D));
         this.goalSelector.addGoal(12, new LookAtPlayerGoal(this, Player.class, 8.0F));
         this.goalSelector.addGoal(13, new RandomLookAroundGoal(this));
 
-        this.targetSelector.addGoal(0, new NearestAttackableTargetGoal<>(this, Animal.class, 10, false, false, (entity) -> entity instanceof Chicken || entity instanceof Rabbit));
+        this.targetSelector.addGoal(0, new NearestAttackableTargetGoal<Animal>(this, Animal.class, 10, false, false, (entity, serverLevel) -> entity instanceof Chicken || entity instanceof Rabbit));
     }
 
     @Override
-    public void addAdditionalSaveData(CompoundTag compound) {
-        super.addAdditionalSaveData(compound);
-        compound.putBoolean("Sleeping", isSleeping());
-        compound.putInt("Variant", getVariant());
+    public void addAdditionalSaveData(ValueOutput output) {
+        super.addAdditionalSaveData(output);
+        output.putBoolean("Sleeping", isSleeping());
+        output.putInt("Variant", getVariant());
         if (getCollarColor() != null) {
-            compound.putInt("CollarColor", getCollarColor().getId());
+            output.putInt("CollarColor", getCollarColor().getId());
         }
     }
 
     @Override
-    public void readAdditionalSaveData(CompoundTag compound) {
-        super.readAdditionalSaveData(compound);
-        this.setSleeping(compound.getBoolean("Sleeping"));
-        this.setVariant(compound.getInt("Variant"));
-        if (compound.contains("CollarColor", 99)) {
-            this.setCollarColor(DyeColor.byId(compound.getInt("CollarColor")));
-        }
+    public void readAdditionalSaveData(ValueInput input) {
+        super.readAdditionalSaveData(input);
+        this.setSleeping(input.getBooleanOr("Sleeping", false));
+        this.setVariant(input.getIntOr("Variant", 0));
+        input.getInt("CollarColor").ifPresent(color -> this.setCollarColor(DyeColor.byId(color)));
     }
 
     @Override
-    public int getBaseExperienceReward() {
+    protected int getBaseExperienceReward(ServerLevel serverLevel) {
         return this.random.nextInt(2, 5);
     }
 
     @Override
-    protected void customServerAiStep() {
-        super.customServerAiStep();
+    protected void customServerAiStep(ServerLevel serverLevel) {
+        super.customServerAiStep(serverLevel);
         if (this.digCooldown > 0) {
             this.digCooldown--;
         }
@@ -170,10 +170,10 @@ public class FerretEntity extends TamableAnimal implements GeoEntity {
 
     @Override
     public AgeableMob getBreedOffspring(ServerLevel level, AgeableMob ageableMob) {
-        FerretEntity baby = CACEntities.FERRET.get().create(level);
+        FerretEntity baby = CACEntities.FERRET.get().create(level, EntitySpawnReason.BREEDING);
         if (baby == null) return null;
 
-        UUID uuid = this.getOwnerUUID();
+        var ownerReference = this.getOwnerReference();
         if (ageableMob instanceof FerretEntity ferretEntity) {
             if (this.random.nextBoolean()) {
                 baby.setVariant(this.getVariant());
@@ -184,8 +184,8 @@ public class FerretEntity extends TamableAnimal implements GeoEntity {
             var color = random.nextBoolean() ? getCollarColor() : ferretEntity.getCollarColor();
             if (color != null) baby.setCollarColor(color);
 
-            if (uuid != null) {
-                baby.setOwnerUUID(uuid);
+            if (ownerReference != null) {
+                baby.setOwnerReference(ownerReference);
                 baby.setTame(true, false);
             }
         }
@@ -193,8 +193,8 @@ public class FerretEntity extends TamableAnimal implements GeoEntity {
     }
 
     @Override
-    public boolean doHurtTarget(Entity entity) {
-        if (super.doHurtTarget(entity)) {
+    public boolean doHurtTarget(ServerLevel serverLevel, Entity entity) {
+        if (super.doHurtTarget(serverLevel, entity)) {
             this.playSound(CACSounds.BITE_ATTACK.get(), this.getSoundVolume(), this.getVoicePitch());
             return true;
         } else {
@@ -219,15 +219,16 @@ public class FerretEntity extends TamableAnimal implements GeoEntity {
                 }
             }
 
-            return InteractionResult.sidedSuccess(level().isClientSide());
+            return InteractionResult.SUCCESS;
         }
 
         if (isTame() && isOwnedBy(player)) {
             var digResult = startDigging(player, handStack);
             if (digResult != InteractionResult.PASS) return digResult;
 
-            if (handStack.getItem() instanceof DyeItem dyeItem && getCollarColor() != dyeItem.getDyeColor()) {
-                setCollarColor(dyeItem.getDyeColor());
+            DyeColor dyeColor = getDyeColor(handStack);
+            if (dyeColor != null && getCollarColor() != dyeColor) {
+                setCollarColor(dyeColor);
                 handStack.consume(1, player);
                 return InteractionResult.SUCCESS;
             }
@@ -238,11 +239,11 @@ public class FerretEntity extends TamableAnimal implements GeoEntity {
                     var food = handStack.get(DataComponents.FOOD);
                     if (food != null) heal(food.nutrition());
                     handStack.consume(1, player);
-                    return InteractionResult.sidedSuccess(level().isClientSide());
+                    return InteractionResult.SUCCESS;
                 }
             } else {
                 setOrderedToSit(!isOrderedToSit());
-                return InteractionResult.sidedSuccess(level().isClientSide());
+                return InteractionResult.SUCCESS;
             }
         }
 
@@ -258,7 +259,7 @@ public class FerretEntity extends TamableAnimal implements GeoEntity {
                     setDigging(true);
                     digCooldown = 6000;
                     handStack.consume(1, player);
-                    return InteractionResult.sidedSuccess(level().isClientSide());
+                    return InteractionResult.SUCCESS;
                 } else {
                     stateToDig = null;
                 }
@@ -296,13 +297,13 @@ public class FerretEntity extends TamableAnimal implements GeoEntity {
     }
 
     @Override
-    public SpawnGroupData finalizeSpawn(ServerLevelAccessor levelAccessor, DifficultyInstance difficultyInstance, MobSpawnType mobSpawnType, SpawnGroupData spawnGroupData) {
+    public SpawnGroupData finalizeSpawn(ServerLevelAccessor levelAccessor, DifficultyInstance difficultyInstance, EntitySpawnReason mobSpawnType, SpawnGroupData spawnGroupData) {
         spawnGroupData = super.finalizeSpawn(levelAccessor, difficultyInstance, mobSpawnType, spawnGroupData);
-        if (mobSpawnType.equals(MobSpawnType.SPAWNER) && this.random.nextFloat() <= 0.2F) {
+        if (mobSpawnType.equals(EntitySpawnReason.SPAWNER) && this.random.nextFloat() <= 0.2F) {
             for (int i = 0; i < this.random.nextInt(1, 4); i++) {
-                FerretEntity baby = CACEntities.FERRET.get().create(this.level());
+                FerretEntity baby = CACEntities.FERRET.get().create(this.level(), EntitySpawnReason.SPAWNER);
                 baby.setVariant(this.random.nextInt(0, 2));
-                baby.moveTo(this.getX(), this.getY(), this.getZ(), this.getYRot(), 0.0F);
+                baby.snapTo(this.getX(), this.getY(), this.getZ(), this.getYRot(), 0.0F);
                 baby.setBaby(true);
                 levelAccessor.addFreshEntity(baby);
             }
@@ -311,26 +312,26 @@ public class FerretEntity extends TamableAnimal implements GeoEntity {
         return spawnGroupData;
     }
 
-    private PlayState predicate(AnimationState<?> event) {
+    private PlayState predicate(AnimationTest<?> event) {
         if (this.isDigging()) {
-            event.getController().setAnimation(RawAnimation.begin().then("dig", Animation.LoopType.PLAY_ONCE));
+            event.controller().setAnimation(RawAnimation.begin().then("dig", LoopType.PLAY_ONCE));
         } else if (this.isInSittingPose()) {
-            event.getController().setAnimation(RawAnimation.begin().thenLoop("sit"));
+            event.controller().setAnimation(RawAnimation.begin().thenLoop("sit"));
         } else if (this.isSleeping()) {
-            event.getController().setAnimation(RawAnimation.begin().thenLoop("sleep"));
+            event.controller().setAnimation(RawAnimation.begin().thenLoop("sleep"));
         } else if (isInWater()) {
-            event.getController().setAnimation(RawAnimation.begin().thenLoop("swim"));
+            event.controller().setAnimation(RawAnimation.begin().thenLoop("swim"));
         } else if (event.isMoving()) {
-            event.getController().setAnimation(RawAnimation.begin().thenLoop("run"));
+            event.controller().setAnimation(RawAnimation.begin().thenLoop("run"));
         } else {
-            event.getController().setAnimation(RawAnimation.begin().thenLoop("idle"));
+            event.controller().setAnimation(RawAnimation.begin().thenLoop("idle"));
         }
         return PlayState.CONTINUE;
     }
 
     @Override
     public void registerControllers(AnimatableManager.ControllerRegistrar controllers) {
-        controllers.add(new AnimationController<>(this, "controller", 4, this::predicate));
+        controllers.add(new AnimationController<>("controller", 4, this::predicate));
     }
 
     @Override
@@ -360,6 +361,30 @@ public class FerretEntity extends TamableAnimal implements GeoEntity {
 
     public void setVariant(int variant) {
         this.entityData.set(VARIANT, Mth.clamp(variant, 0, 1));
+    }
+
+    private Ingredient ingredient(TagKey<Item> tag) {
+        return Ingredient.of(this.registryAccess().lookupOrThrow(Registries.ITEM).getOrThrow(tag));
+    }
+
+    private DyeColor getDyeColor(ItemStack stack) {
+        if (stack.is(Items.WHITE_DYE)) return DyeColor.WHITE;
+        if (stack.is(Items.ORANGE_DYE)) return DyeColor.ORANGE;
+        if (stack.is(Items.MAGENTA_DYE)) return DyeColor.MAGENTA;
+        if (stack.is(Items.LIGHT_BLUE_DYE)) return DyeColor.LIGHT_BLUE;
+        if (stack.is(Items.YELLOW_DYE)) return DyeColor.YELLOW;
+        if (stack.is(Items.LIME_DYE)) return DyeColor.LIME;
+        if (stack.is(Items.PINK_DYE)) return DyeColor.PINK;
+        if (stack.is(Items.GRAY_DYE)) return DyeColor.GRAY;
+        if (stack.is(Items.LIGHT_GRAY_DYE)) return DyeColor.LIGHT_GRAY;
+        if (stack.is(Items.CYAN_DYE)) return DyeColor.CYAN;
+        if (stack.is(Items.PURPLE_DYE)) return DyeColor.PURPLE;
+        if (stack.is(Items.BLUE_DYE)) return DyeColor.BLUE;
+        if (stack.is(Items.BROWN_DYE)) return DyeColor.BROWN;
+        if (stack.is(Items.GREEN_DYE)) return DyeColor.GREEN;
+        if (stack.is(Items.RED_DYE)) return DyeColor.RED;
+        if (stack.is(Items.BLACK_DYE)) return DyeColor.BLACK;
+        return null;
     }
 
     @Nullable
@@ -399,7 +424,7 @@ public class FerretEntity extends TamableAnimal implements GeoEntity {
                 --this.countdown;
                 return false;
             } else {
-                return FerretEntity.this.level().isNight();
+                return !FerretEntity.this.level().isBrightOutside();
             }
         }
 

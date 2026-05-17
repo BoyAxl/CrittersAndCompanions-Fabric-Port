@@ -8,12 +8,11 @@ import net.fabricmc.fabric.api.loot.v3.LootTableEvents;
 import net.fabricmc.fabric.mixin.loot.LootTableAccessor;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.entity.EntityType;
-import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.level.storage.loot.BuiltInLootTables;
 import net.minecraft.world.level.storage.loot.LootPool;
 import net.minecraft.world.level.storage.loot.LootTable;
 import net.minecraft.world.level.storage.loot.entries.LootItem;
-import net.minecraft.world.level.storage.loot.functions.SetItemCountFunction;
 import net.minecraft.world.level.storage.loot.predicates.LootItemRandomChanceCondition;
 import net.minecraft.world.level.storage.loot.providers.number.ConstantValue;
 
@@ -23,13 +22,13 @@ public class CACLootModifiers {
         // should always reflect the values in crittersandcompanions/loot_modifiers/..
 
         addEntriesTo(BuiltInLootTables.FISHING_FISH, 0, builder -> {
-            builder.accept(10, new ItemStack(CACItems.CLAM.get()));
-            builder.accept(5, new ItemStack(CACItems.KOI_FISH.get()));
+            builder.accept(10, CACItems.CLAM.get());
+            builder.accept(5, CACItems.KOI_FISH.get());
         });
 
-        addEntriesTo(EntityType.DROWNED.getDefaultLootTable(), 0, builder -> {
-            builder.accept(1, new ItemStack(CACItems.CLAM.get()));
-        });
+        EntityType.DROWNED.getDefaultLootTable().ifPresent(key -> addEntriesTo(key, 0, builder -> {
+            builder.accept(1, CACItems.CLAM.get());
+        }));
 
         LootTableEvents.MODIFY.register((key, builder, source, provider) -> {
             if (
@@ -45,7 +44,7 @@ public class CACLootModifiers {
         });
     }
 
-    private static void addEntriesTo(ResourceKey<LootTable> key, int index, Consumer<BiConsumer<Integer, ItemStack>> entries) {
+    private static void addEntriesTo(ResourceKey<LootTable> key, int index, Consumer<BiConsumer<Integer, Item>> entries) {
         LootTableEvents.REPLACE.register(((id, table, source, lookupProvider) -> {
             if (!id.equals(key)) return null;
 
@@ -53,17 +52,16 @@ public class CACLootModifiers {
             var builder = LootTable.lootTable()
                     .setParamSet(table.getParamSet());
 
-            accessor.fabric_getRandomSequenceId().ifPresent(builder::setRandomSequence);
+            accessor.fabric_getRandomSequence().ifPresent(builder::setRandomSequence);
             var pools = accessor.fabric_getPools();
 
             for (int i = 0; i < pools.size(); i++) {
                 var pool = FabricLootPoolBuilder.copyOf(pools.get(i));
 
                 if (i == index) {
-                    entries.accept((weight, stack) -> {
-                        pool.add(LootItem.lootTableItem(stack.getItem())
+                    entries.accept((weight, item) -> {
+                        pool.add(LootItem.lootTableItem(item)
                                 .setWeight(weight)
-                                .apply(SetItemCountFunction.setCount(ConstantValue.exactly(stack.getCount())))
                         );
                     });
                 }

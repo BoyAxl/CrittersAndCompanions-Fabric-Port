@@ -2,12 +2,12 @@ package com.github.eterdelta.crittersandcompanions;
 
 import com.github.eterdelta.crittersandcompanions.handler.PlayerHandler;
 import com.github.eterdelta.crittersandcompanions.platform.FabricConfigs;
-import io.github.fabricators_of_create.porting_lib.entity.events.player.PlayerInteractEvent;
-import io.github.fabricators_of_create.porting_lib.entity.events.tick.PlayerTickEvent;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
+import net.fabricmc.fabric.api.event.player.UseEntityCallback;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.networking.v1.EntityTrackingEvents;
 import net.fabricmc.fabric.api.object.builder.v1.entity.FabricDefaultAttributeRegistry;
-import net.minecraft.world.item.context.UseOnContext;
+import net.minecraft.world.InteractionResult;
 
 public class CrittersAndCompanionsFabric implements ModInitializer {
 
@@ -18,17 +18,13 @@ public class CrittersAndCompanionsFabric implements ModInitializer {
 
         CrittersAndCompanions.onAttributeCreation(FabricDefaultAttributeRegistry::register);
 
-        // TODO check
-        PlayerInteractEvent.EntityInteract.EVENT.register(event -> {
-            if (event.getLevel().isClientSide()) return;
-            var result = PlayerHandler.onPlayerEntityInteract(event.getTarget(), new UseOnContext(event.getEntity(), event.getHand(), null));
-            if (result != null) {
-                event.setCancellationResult(result);
-                event.setCanceled(true);
-            }
+        UseEntityCallback.EVENT.register((player, level, hand, entity, hitResult) -> {
+            if (level.isClientSide()) return InteractionResult.PASS;
+            var result = PlayerHandler.onPlayerEntityInteract(entity, player, hand);
+            return result != null ? result : InteractionResult.PASS;
         });
 
-        PlayerTickEvent.Post.EVENT.register(event -> PlayerHandler.onPlayerTick(event.getEntity()));
+        ServerTickEvents.END_SERVER_TICK.register(server -> server.getPlayerList().getPlayers().forEach(PlayerHandler::onPlayerTick));
         EntityTrackingEvents.START_TRACKING.register(PlayerHandler::onPlayerStartTracking);
         EntityTrackingEvents.STOP_TRACKING.register(PlayerHandler::onPlayerStopTracking);
 

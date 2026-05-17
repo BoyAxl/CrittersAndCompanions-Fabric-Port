@@ -3,9 +3,9 @@ package com.github.eterdelta.crittersandcompanions.mixin;
 import com.github.eterdelta.crittersandcompanions.registry.CACItems;
 import net.minecraft.world.DifficultyInstance;
 import net.minecraft.world.entity.EquipmentSlot;
-import net.minecraft.world.entity.MobSpawnType;
+import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.SpawnGroupData;
-import net.minecraft.world.entity.monster.Drowned;
+import net.minecraft.world.entity.monster.zombie.Drowned;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.ServerLevelAccessor;
 import org.spongepowered.asm.mixin.Mixin;
@@ -20,7 +20,7 @@ public class DrownedMixin {
             method = "finalizeSpawn",
             at = @At("RETURN")
     )
-    private void addClam(ServerLevelAccessor serverLevelAccessor, DifficultyInstance difficultyInstance, MobSpawnType mobSpawnType, SpawnGroupData spawnGroupData, CallbackInfoReturnable<SpawnGroupData> cir) {
+    private void addClam(ServerLevelAccessor serverLevelAccessor, DifficultyInstance difficultyInstance, EntitySpawnReason mobSpawnType, SpawnGroupData spawnGroupData, CallbackInfoReturnable<SpawnGroupData> cir) {
         var self = (Drowned) (Object) this;
 
         if (self.getItemBySlot(EquipmentSlot.OFFHAND).isEmpty() && self.getRandom().nextFloat() < 0.05F) {

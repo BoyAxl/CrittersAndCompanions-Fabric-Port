@@ -2,30 +2,27 @@ package com.github.eterdelta.crittersandcompanions.client.model.geo;
 
 import com.github.eterdelta.crittersandcompanions.CrittersAndCompanions;
 import com.github.eterdelta.crittersandcompanions.entity.ShimaEnagaEntity;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.util.Mth;
-import software.bernie.geckolib.animation.AnimationState;
-import software.bernie.geckolib.constant.DataTickets;
-import software.bernie.geckolib.model.DefaultedEntityGeoModel;
-import software.bernie.geckolib.model.data.EntityModelData;
+import net.minecraft.resources.Identifier;
+import com.geckolib.model.DefaultedEntityGeoModel;
+import com.geckolib.renderer.base.GeoRenderState;
 
 public class ShimaEnagaModel extends DefaultedEntityGeoModel<ShimaEnagaEntity> {
-    private static final ResourceLocation MODEL = CrittersAndCompanions.createId("shima_enaga");
+    private static final Identifier MODEL = CrittersAndCompanions.createId("shima_enaga");
+    private static final Identifier MODEL_RESOURCE = CrittersAndCompanions.createId("entity/shima_enaga");
+    private static final Identifier ANIMATION_RESOURCE = CrittersAndCompanions.createId("entity/shima_enaga");
 
     public ShimaEnagaModel() {
-        super(MODEL, false);
+        super(MODEL);
     }
 
     @Override
-    public void setCustomAnimations(ShimaEnagaEntity animatable, long instanceId, AnimationState<ShimaEnagaEntity> animationState) {
-        var head = getAnimationProcessor().getBone("head_rotation");
+    public Identifier getModelResource(GeoRenderState renderState) {
+        return MODEL_RESOURCE;
+    }
 
-        if (head != null) {
-            EntityModelData entityData = animationState.getData(DataTickets.ENTITY_MODEL_DATA);
-
-            head.setRotX((entityData.headPitch() + 10F) * Mth.DEG_TO_RAD * 0.6F);
-            head.setRotY(entityData.netHeadYaw() * Mth.DEG_TO_RAD * 0.6F);
-        }
+    @Override
+    public Identifier getAnimationResource(ShimaEnagaEntity animatable) {
+        return ANIMATION_RESOURCE;
     }
 
 }

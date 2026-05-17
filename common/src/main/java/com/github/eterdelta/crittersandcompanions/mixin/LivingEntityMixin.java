@@ -14,10 +14,7 @@ import it.unimi.dsi.fastutil.objects.ObjectObjectImmutablePair;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.ListTag;
-import net.minecraft.nbt.NbtUtils;
-import net.minecraft.nbt.Tag;
+import net.minecraft.core.UUIDUtil;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
@@ -26,13 +23,14 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.storage.ValueInput;
+import net.minecraft.world.level.storage.ValueOutput;
 import net.minecraft.world.phys.Vec3;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.ModifyArg;
-import org.spongepowered.asm.mixin.injection.ModifyVariable;
 import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
@@ -59,38 +57,32 @@ public abstract class LivingEntityMixin extends Entity implements ISilkLeashStat
     }
 
     @Inject(at = @At("TAIL"), method = "addAdditionalSaveData")
-    private void onAddAdditionalSaveData(CompoundTag compoundTag, CallbackInfo callbackInfo) {
+    private void onAddAdditionalSaveData(ValueOutput valueOutput, CallbackInfo callbackInfo) {
         if (!this.level().isClientSide()) {
-            ListTag leashingEntitiesList = new ListTag();
+            Set<UUID> leashingEntities = new HashSet<>();
             for (Entity entity : getLeashingEntities()) {
-                leashingEntitiesList.add(NbtUtils.createUUID(entity.getUUID()));
+                leashingEntities.add(entity.getUUID());
             }
-            compoundTag.put("LeashingEntities", leashingEntitiesList);
+            valueOutput.store("LeashingEntities", UUIDUtil.CODEC_SET, leashingEntities);
 
-            ListTag leashedByEntitiesList = new ListTag();
+            Set<UUID> leashedByEntities = new HashSet<>();
             for (Entity entity : getLeashedByEntities()) {
-                leashedByEntitiesList.add(NbtUtils.createUUID(entity.getUUID()));
+                leashedByEntities.add(entity.getUUID());
             }
-            compoundTag.put("LeashedByEntities", leashedByEntitiesList);
+            valueOutput.store("LeashedByEntities", UUIDUtil.CODEC_SET, leashedByEntities);
         }
     }
 
     @Inject(at = @At("TAIL"), method = "readAdditionalSaveData")
-    private void onReadAdditionalSaveData(CompoundTag compoundTag, CallbackInfo callbackInfo) {
+    private void onReadAdditionalSaveData(ValueInput valueInput, CallbackInfo callbackInfo) {
         if (!this.level().isClientSide()) {
-            ListTag leashingEntitiesList = compoundTag.getList("LeashingEntities", 11);
-            for (Tag tag : leashingEntitiesList) {
-                UUID uuid = NbtUtils.loadUUID(tag);
-                this.savedLeashState.first().add(uuid);
-            }
+            Set<UUID> leashingEntities = valueInput.read("LeashingEntities", UUIDUtil.CODEC_SET).orElse(Set.of());
+            this.savedLeashState.first().addAll(leashingEntities);
 
-            ListTag leashedByEntitiesList = compoundTag.getList("LeashedByEntities", 11);
-            for (Tag tag : leashedByEntitiesList) {
-                UUID uuid = NbtUtils.loadUUID(tag);
-                this.savedLeashState.second().add(uuid);
-            }
+            Set<UUID> leashedByEntities = valueInput.read("LeashedByEntities", UUIDUtil.CODEC_SET).orElse(Set.of());
+            this.savedLeashState.second().addAll(leashedByEntities);
 
-            if (!leashingEntitiesList.isEmpty() || !leashedByEntitiesList.isEmpty()) {
+            if (!leashingEntities.isEmpty() || !leashedByEntities.isEmpty()) {
                 this.needsLeashStateLoad = true;
             }
         }
@@ -161,7 +153,7 @@ public abstract class LivingEntityMixin extends Entity implements ISilkLeashStat
         }
     }
 
-    @Inject(at = @At(value = "INVOKE", target = "Lnet/minecraft/world/level/Level;broadcastEntityEvent(Lnet/minecraft/world/entity/Entity;B)V", ordinal = 0, shift = At.Shift.BY, by = 1), method = "die")
+    @Inject(at = @At("HEAD"), method = "die")
     private void onDie(DamageSource source, CallbackInfo callbackInfo) {
         int unleashedStates = 0;
         unleashedStates += Math.max(0, SilkLeashItem.updateLeashStates((LivingEntity) ((Entity) this), null) - 1);
@@ -172,17 +164,22 @@ public abstract class LivingEntityMixin extends Entity implements ISilkLeashStat
         }
     }
 
-    @Redirect(at = @At(value = "INVOKE", target = "net/minecraft/world/entity/LivingEntity.isInWater()Z"), method = "travel(Lnet/minecraft/world/phys/Vec3;)V")
-    private boolean redirectIsInWater(LivingEntity entity) {
-        return this.isInWater() || this.getBlockStateOn().is(CACBlocks.SEA_BUNNY_SLIME_BLOCK.get());
+    @Redirect(at = @At(value = "INVOKE", target = "Lnet/minecraft/world/entity/LivingEntity;isInWater()Z"), method = "shouldTravelInFluid")
+    private boolean redirectShouldTravelInFluidIsInWater(LivingEntity entity) {
+        return entity.isInWater() || entity.getBlockStateOn().is(CACBlocks.SEA_BUNNY_SLIME_BLOCK.get());
     }
 
-    @ModifyVariable(at = @At(value = "LOAD"), method = "aiStep()V", ordinal = 0)
-    private boolean modifyWaterFlag(boolean flag) {
-        return flag || this.getBlockStateOn().is(CACBlocks.SEA_BUNNY_SLIME_BLOCK.get());
+    @Redirect(at = @At(value = "INVOKE", target = "Lnet/minecraft/world/entity/LivingEntity;isInWater()Z"), method = "travelInFluid")
+    private boolean redirectTravelInFluidIsInWater(LivingEntity entity) {
+        return entity.isInWater() || entity.getBlockStateOn().is(CACBlocks.SEA_BUNNY_SLIME_BLOCK.get());
     }
 
-    @ModifyArg(method = "travel", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/entity/LivingEntity;moveRelative(FLnet/minecraft/world/phys/Vec3;)V", ordinal = 0))
+    @Redirect(at = @At(value = "INVOKE", target = "Lnet/minecraft/world/entity/LivingEntity;isInWater()Z"), method = "aiStep")
+    private boolean redirectAiStepIsInWater(LivingEntity entity) {
+        return entity.isInWater() || entity.getBlockStateOn().is(CACBlocks.SEA_BUNNY_SLIME_BLOCK.get());
+    }
+
+    @ModifyArg(method = "travelInWater", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/entity/LivingEntity;moveRelative(FLnet/minecraft/world/phys/Vec3;)V"), index = 0)
     private float modifySwimSpeed(float original) {
         return PearlNecklaceItem.getWearing(this)
                 .map(PearlNecklaceItem::getLevel)

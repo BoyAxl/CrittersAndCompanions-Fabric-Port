@@ -7,7 +7,7 @@ import com.github.eterdelta.crittersandcompanions.mixin.SpawnPlacementsAccessor;
 import com.github.eterdelta.crittersandcompanions.registry.CACEntities;
 import net.minecraft.world.entity.SpawnPlacementTypes;
 import net.minecraft.world.entity.animal.Animal;
-import net.minecraft.world.entity.animal.WaterAnimal;
+import net.minecraft.world.entity.animal.fish.WaterAnimal;
 import net.minecraft.world.level.levelgen.Heightmap;
 
 public class SpawnHandler {

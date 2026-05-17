@@ -6,9 +6,7 @@
     "D  "
   ],
   "key": {
-    "D": {
-      "item": "minecraft:diamond"
-    }
+    "D": "minecraft:diamond"
   },
   "result": {
     "id": "crittersandcompanions:diamond_dragonfly_armor",

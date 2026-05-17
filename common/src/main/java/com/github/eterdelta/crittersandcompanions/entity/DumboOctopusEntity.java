@@ -20,7 +20,7 @@ import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.Mob;
-import net.minecraft.world.entity.MobSpawnType;
+import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.MoverType;
 import net.minecraft.world.entity.SpawnGroupData;
 import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
@@ -31,21 +31,23 @@ import net.minecraft.world.entity.ai.goal.Goal;
 import net.minecraft.world.entity.ai.navigation.PathNavigation;
 import net.minecraft.world.entity.ai.navigation.WaterBoundPathNavigation;
 import net.minecraft.world.entity.animal.Bucketable;
-import net.minecraft.world.entity.animal.WaterAnimal;
+import net.minecraft.world.entity.animal.fish.WaterAnimal;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.CustomData;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.ServerLevelAccessor;
+import net.minecraft.world.level.storage.ValueInput;
+import net.minecraft.world.level.storage.ValueOutput;
 import net.minecraft.world.phys.Vec3;
-import software.bernie.geckolib.animatable.GeoEntity;
-import software.bernie.geckolib.animatable.instance.AnimatableInstanceCache;
-import software.bernie.geckolib.animation.AnimatableManager;
-import software.bernie.geckolib.animation.AnimationController;
-import software.bernie.geckolib.animation.AnimationState;
-import software.bernie.geckolib.animation.PlayState;
-import software.bernie.geckolib.animation.RawAnimation;
-import software.bernie.geckolib.util.GeckoLibUtil;
+import com.geckolib.animatable.GeoEntity;
+import com.geckolib.animatable.instance.AnimatableInstanceCache;
+import com.geckolib.animatable.manager.AnimatableManager;
+import com.geckolib.animation.AnimationController;
+import com.geckolib.animation.state.AnimationTest;
+import com.geckolib.animation.object.PlayState;
+import com.geckolib.animation.RawAnimation;
+import com.geckolib.util.GeckoLibUtil;
 
 public class DumboOctopusEntity extends WaterAnimal implements GeoEntity, Bucketable {
     private static final EntityDataAccessor<Boolean> RESTING = SynchedEntityData.defineId(DumboOctopusEntity.class, EntityDataSerializers.BOOLEAN);
@@ -92,19 +94,19 @@ public class DumboOctopusEntity extends WaterAnimal implements GeoEntity, Bucket
     }
 
     @Override
-    public void addAdditionalSaveData(CompoundTag compound) {
-        super.addAdditionalSaveData(compound);
-        compound.putBoolean("Resting", this.isResting());
-        compound.putInt("Variant", this.getVariant());
-        compound.putBoolean("FromBucket", this.fromBucket());
+    public void addAdditionalSaveData(ValueOutput output) {
+        super.addAdditionalSaveData(output);
+        output.putBoolean("Resting", this.isResting());
+        output.putInt("Variant", this.getVariant());
+        output.putBoolean("FromBucket", this.fromBucket());
     }
 
     @Override
-    public void readAdditionalSaveData(CompoundTag compound) {
-        super.readAdditionalSaveData(compound);
-        this.setResting(compound.getBoolean("Resting"));
-        this.setVariant(compound.getInt("Variant"));
-        this.setFromBucket(compound.getBoolean("FromBucket"));
+    public void readAdditionalSaveData(ValueInput input) {
+        super.readAdditionalSaveData(input);
+        this.setResting(input.getBooleanOr("Resting", false));
+        this.setVariant(input.getIntOr("Variant", 0));
+        this.setFromBucket(input.getBooleanOr("FromBucket", false));
     }
 
     @Override
@@ -128,7 +130,7 @@ public class DumboOctopusEntity extends WaterAnimal implements GeoEntity, Bucket
     @Override
     public void loadFromBucketTag(CompoundTag bucketCompound) {
         Bucketable.loadDefaultDataFromBucketTag(this, bucketCompound);
-        setVariant(bucketCompound.getInt("Variant"));
+        setVariant(bucketCompound.getInt("Variant").orElse(0));
     }
 
     @Override
@@ -183,19 +185,19 @@ public class DumboOctopusEntity extends WaterAnimal implements GeoEntity, Bucket
     }
 
     @Override
-    public SpawnGroupData finalizeSpawn(ServerLevelAccessor levelAccessor, DifficultyInstance difficultyInstance, MobSpawnType mobSpawnType, SpawnGroupData spawnGroupData) {
-        if (mobSpawnType == MobSpawnType.BUCKET) return spawnGroupData;
+    public SpawnGroupData finalizeSpawn(ServerLevelAccessor levelAccessor, DifficultyInstance difficultyInstance, EntitySpawnReason mobSpawnType, SpawnGroupData spawnGroupData) {
+        if (mobSpawnType == EntitySpawnReason.BUCKET) return spawnGroupData;
         this.setVariant(this.random.nextInt(0, 4));
         return super.finalizeSpawn(levelAccessor, difficultyInstance, mobSpawnType, spawnGroupData);
     }
 
-    private PlayState predicate(AnimationState<?> event) {
+    private PlayState predicate(AnimationTest<?> event) {
         if (this.isResting()) {
-            event.getController().setAnimation(RawAnimation.begin().thenLoop("dumbo_octopus_idle"));
+            event.controller().setAnimation(RawAnimation.begin().thenLoop("dumbo_octopus_idle"));
         } else if (this.isInWater()) {
-            event.getController().setAnimation(RawAnimation.begin().thenLoop("dumbo_octopus_swim"));
+            event.controller().setAnimation(RawAnimation.begin().thenLoop("dumbo_octopus_swim"));
         } else {
-            event.getController().setAnimation(RawAnimation.begin().thenLoop("dumbo_octopus_on_land"));
+            event.controller().setAnimation(RawAnimation.begin().thenLoop("dumbo_octopus_on_land"));
         }
         return PlayState.CONTINUE;
     }
@@ -229,7 +231,7 @@ public class DumboOctopusEntity extends WaterAnimal implements GeoEntity, Bucket
 
     @Override
     public void registerControllers(AnimatableManager.ControllerRegistrar controllers) {
-        controllers.add(new AnimationController<>(this, "controller", 4, this::predicate));
+        controllers.add(new AnimationController<>("controller", 4, this::predicate));
     }
 
     @Override

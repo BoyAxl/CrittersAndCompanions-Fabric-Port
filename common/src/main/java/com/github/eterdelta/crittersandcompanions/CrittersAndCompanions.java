@@ -14,7 +14,7 @@ import com.github.eterdelta.crittersandcompanions.registry.CACSounds;
 import java.util.function.BiConsumer;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
@@ -24,8 +24,8 @@ import net.minecraft.world.item.DyeColor;
 public class CrittersAndCompanions {
     public static final String MODID = "crittersandcompanions";
 
-    public static ResourceLocation createId(String path) {
-        return ResourceLocation.fromNamespaceAndPath(MODID, path);
+    public static Identifier createId(String path) {
+        return Identifier.fromNamespaceAndPath(MODID, path);
     }
 
     private static final RegistryHelper<CreativeModeTab> CREATIVE_TABS = Services.PLATFORM.createRegistryHelper(Registries.CREATIVE_MODE_TAB, MODID);

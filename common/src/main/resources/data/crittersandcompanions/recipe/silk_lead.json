@@ -6,12 +6,8 @@
     "  S"
   ],
   "key": {
-    "S": {
-      "item": "crittersandcompanions:silk"
-    },
-    "B": {
-      "item": "minecraft:slime_ball"
-    }
+    "S": "crittersandcompanions:silk",
+    "B": "minecraft:slime_ball"
   },
   "result": {
     "id": "crittersandcompanions:silk_lead",

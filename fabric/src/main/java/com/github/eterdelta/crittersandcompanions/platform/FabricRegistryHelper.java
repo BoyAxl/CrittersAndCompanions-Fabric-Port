@@ -2,12 +2,12 @@ package com.github.eterdelta.crittersandcompanions.platform;
 
 import com.github.eterdelta.crittersandcompanions.CrittersAndCompanions;
 import java.util.function.Supplier;
-import net.fabricmc.fabric.api.itemgroup.v1.ItemGroupEvents;
+import net.fabricmc.fabric.api.creativetab.v1.CreativeModeTabEvents;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 
@@ -15,9 +15,9 @@ public class FabricRegistryHelper<T> implements RegistryHelper<T> {
 
     @SuppressWarnings("unchecked")
     private static <T> Registry<T> getRegistryOrThrow(ResourceKey<Registry<T>> registryKey) {
-        var registry = (Registry<T>) BuiltInRegistries.REGISTRY.get(registryKey.location());
+        var registry = (Registry<T>) BuiltInRegistries.REGISTRY.getValue(registryKey.identifier());
         if (registry == null) {
-            throw new IllegalArgumentException("Could not locate registry for %s".formatted(registryKey.location()));
+            throw new IllegalArgumentException("Could not locate registry for %s".formatted(registryKey.identifier()));
         }
         return registry;
     }
@@ -34,7 +34,7 @@ public class FabricRegistryHelper<T> implements RegistryHelper<T> {
 
     @Override
     public <R extends T> RegistryEntry<R> register(String id, Supplier<? extends R> creator) {
-        var key = ResourceKey.create(registryKey, ResourceLocation.fromNamespaceAndPath(modid, id));
+        var key = ResourceKey.create(registryKey, Identifier.fromNamespaceAndPath(modid, id));
         var registered = Registry.register(registry, key, creator.get());
         return new RegistryEntry<>() {
             @Override
@@ -60,7 +60,7 @@ public class FabricRegistryHelper<T> implements RegistryHelper<T> {
         public <R extends Item> RegistryEntry<R> register(String id, Supplier<? extends R> creator) {
             RegistryEntry<R> item = super.register(id, creator);
 
-            ItemGroupEvents.modifyEntriesEvent(CrittersAndCompanions.CREATIVE_TAB.getKey())
+            CreativeModeTabEvents.modifyOutputEvent(CrittersAndCompanions.CREATIVE_TAB.getKey())
                     .register(entries -> entries.accept(new ItemStack(item.get())));
 
             return item;

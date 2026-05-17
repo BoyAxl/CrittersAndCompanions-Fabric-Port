@@ -2,52 +2,45 @@ package com.github.eterdelta.crittersandcompanions.client.model.geo;
 
 import com.github.eterdelta.crittersandcompanions.CrittersAndCompanions;
 import com.github.eterdelta.crittersandcompanions.entity.RedPandaEntity;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.util.Mth;
-import software.bernie.geckolib.animation.AnimationState;
-import software.bernie.geckolib.constant.DataTickets;
-import software.bernie.geckolib.model.GeoModel;
-import software.bernie.geckolib.model.data.EntityModelData;
+import net.minecraft.resources.Identifier;
+import com.geckolib.constant.DataTickets;
+import com.geckolib.constant.dataticket.DataTicket;
+import com.geckolib.model.GeoModel;
+import com.geckolib.renderer.base.GeoRenderState;
 
 public class RedPandaModel extends GeoModel<RedPandaEntity> {
-    private static final ResourceLocation[] MODELS = new ResourceLocation[]{
-            CrittersAndCompanions.createId("geo/entity/red_panda.geo.json"),
-            CrittersAndCompanions.createId("geo/entity/baby_red_panda.geo.json")};
-    private static final ResourceLocation[] TEXTURES = new ResourceLocation[]{
+    private static final DataTicket<Boolean> BABY = DataTickets.create("cac_red_panda_baby", Boolean.class);
+    private static final DataTicket<Boolean> SLEEPING = DataTickets.create("cac_red_panda_sleeping", Boolean.class);
+    private static final Identifier[] MODELS = new Identifier[]{
+            CrittersAndCompanions.createId("entity/red_panda"),
+            CrittersAndCompanions.createId("entity/baby_red_panda")};
+    private static final Identifier[] TEXTURES = new Identifier[]{
             CrittersAndCompanions.createId("textures/entity/red_panda.png"),
             CrittersAndCompanions.createId("textures/entity/red_panda_sleeping.png"),
             CrittersAndCompanions.createId("textures/entity/baby_red_panda.png")};
-    private static final ResourceLocation[] ANIMATIONS = new ResourceLocation[]{
-            CrittersAndCompanions.createId("animations/entity/red_panda.animation.json"),
-            CrittersAndCompanions.createId("animations/entity/baby_red_panda.animation.json")};
+    private static final Identifier[] ANIMATIONS = new Identifier[]{
+            CrittersAndCompanions.createId("entity/red_panda"),
+            CrittersAndCompanions.createId("entity/baby_red_panda")};
 
     @Override
-    public ResourceLocation getModelResource(RedPandaEntity object) {
-        return MODELS[object.isBaby() ? 1 : 0];
+    public Identifier getModelResource(GeoRenderState renderState) {
+        return MODELS[renderState.getOrDefaultGeckolibData(BABY, false) ? 1 : 0];
     }
 
     @Override
-    public ResourceLocation getTextureResource(RedPandaEntity object) {
-        return TEXTURES[object.isBaby() ? 2 : object.isSleeping() ? 1 : 0];
+    public Identifier getTextureResource(GeoRenderState renderState) {
+        return TEXTURES[renderState.getOrDefaultGeckolibData(BABY, false) ? 2 : renderState.getOrDefaultGeckolibData(SLEEPING, false) ? 1 : 0];
     }
 
     @Override
-    public ResourceLocation getAnimationResource(RedPandaEntity animatable) {
+    public Identifier getAnimationResource(RedPandaEntity animatable) {
         return ANIMATIONS[animatable.isBaby() ? 1 : 0];
     }
 
     @Override
-    public void setCustomAnimations(RedPandaEntity animatable, long instanceId, AnimationState<RedPandaEntity> animationState) {
-        super.setCustomAnimations(animatable, instanceId, animationState);
-
-        EntityModelData data = animationState.getData(DataTickets.ENTITY_MODEL_DATA);
-        var neck = this.getAnimationProcessor().getBone("head");
-
-        if (!animatable.isSleeping() && !animatable.isInSittingPose()) {
-            if (!animatable.isAlert()) {
-                neck.setRotX(data.headPitch() * Mth.DEG_TO_RAD);
-            }
-            neck.setRotY(data.netHeadYaw() * Mth.DEG_TO_RAD);
-        }
+    public void addAdditionalStateData(RedPandaEntity animatable, Object relatedObject, GeoRenderState renderState) {
+        super.addAdditionalStateData(animatable, relatedObject, renderState);
+        renderState.addGeckolibData(BABY, animatable.isBaby());
+        renderState.addGeckolibData(SLEEPING, animatable.isSleeping());
     }
 }

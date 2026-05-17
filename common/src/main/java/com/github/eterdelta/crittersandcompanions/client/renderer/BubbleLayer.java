@@ -5,20 +5,20 @@ import com.github.eterdelta.crittersandcompanions.client.model.BubbleModel;
 import com.github.eterdelta.crittersandcompanions.extension.IBubbleState;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
-import net.minecraft.client.model.PlayerModel;
+import net.minecraft.client.model.player.PlayerModel;
 import net.minecraft.client.model.geom.EntityModelSet;
 import net.minecraft.client.model.geom.ModelLayerLocation;
 import net.minecraft.client.renderer.MultiBufferSource;
-import net.minecraft.client.renderer.RenderType;
+import net.minecraft.client.renderer.rendertype.RenderType;
 import net.minecraft.client.renderer.entity.RenderLayerParent;
 import net.minecraft.client.renderer.entity.layers.RenderLayer;
 import net.minecraft.client.renderer.texture.OverlayTexture;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.player.Player;
 
 public class BubbleLayer extends RenderLayer<Player, PlayerModel<Player>> {
     public static final ModelLayerLocation LAYER_LOCATION = new ModelLayerLocation(CrittersAndCompanions.createId("bubble"), "main");
-    private static final ResourceLocation TEXTURE = CrittersAndCompanions.createId("textures/entity/bubble.png");
+    private static final Identifier TEXTURE = CrittersAndCompanions.createId("textures/entity/bubble.png");
     private final BubbleModel<Player> bubbleModel;
 
     public BubbleLayer(RenderLayerParent<Player, PlayerModel<Player>> parent, EntityModelSet modelSet) {

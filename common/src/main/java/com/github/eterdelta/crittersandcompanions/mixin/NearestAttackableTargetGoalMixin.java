@@ -2,7 +2,6 @@ package com.github.eterdelta.crittersandcompanions.mixin;
 
 import com.github.eterdelta.crittersandcompanions.item.PearlNecklaceItem;
 import com.github.eterdelta.crittersandcompanions.platform.Services;
-import java.util.function.Predicate;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.ai.goal.target.NearestAttackableTargetGoal;
@@ -24,18 +23,17 @@ public abstract class NearestAttackableTargetGoalMixin<T extends LivingEntity> e
         super(mob, mustSee);
     }
 
-    @Inject(at = @At("RETURN"), method = "<init>(Lnet/minecraft/world/entity/Mob;Ljava/lang/Class;IZZLjava/util/function/Predicate;)V")
-    private void onInit(Mob mob, Class<T> targetType, int randomInterval, boolean mustSee, boolean mustReach, Predicate<LivingEntity> targetPredicate, CallbackInfo callback) {
+    @Inject(at = @At("RETURN"), method = "<init>(Lnet/minecraft/world/entity/Mob;Ljava/lang/Class;IZZLnet/minecraft/world/entity/ai/targeting/TargetingConditions$Selector;)V")
+    private void onInit(Mob mob, Class<T> targetType, int randomInterval, boolean mustSee, boolean mustReach, TargetingConditions.Selector targetPredicate, CallbackInfo callback) {
         if (targetPredicate != null) {
             getTargetConditions().selector(
-                    targetPredicate.and(target -> PearlNecklaceItem.getWearing(target)
+                    (target, serverLevel) -> targetPredicate.test(target, serverLevel) && PearlNecklaceItem.getWearing(target)
                             .map(PearlNecklaceItem::getLevel)
                             .map(level -> Services.CONFIGS.common().necklaceRangeDebuff(mob.getType(), level))
                             .filter(it -> it > 0)
                             .map(debuff -> getFollowDistance() - (getFollowDistance() * debuff))
                             .map(range -> target.position().closerThan(mob.position(), range))
                             .orElse(true)
-                    )
             );
         }
     }

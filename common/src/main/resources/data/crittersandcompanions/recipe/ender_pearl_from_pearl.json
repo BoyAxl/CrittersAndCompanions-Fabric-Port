@@ -1,12 +1,8 @@
 {
   "type": "minecraft:crafting_shapeless",
   "ingredients": [
-    {
-      "item": "crittersandcompanions:pearl"
-    },
-    {
-      "item": "minecraft:popped_chorus_fruit"
-    }
+    "crittersandcompanions:pearl",
+    "minecraft:popped_chorus_fruit"
   ],
   "result": {
     "id": "minecraft:ender_pearl",

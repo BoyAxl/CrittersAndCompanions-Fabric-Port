@@ -6,12 +6,8 @@
     "  S"
   ],
   "key": {
-    "S": {
-      "item": "crittersandcompanions:silk"
-    },
-    "I": {
-      "item": "minecraft:iron_ingot"
-    }
+    "S": "crittersandcompanions:silk",
+    "I": "minecraft:iron_ingot"
   },
   "result": {
     "id": "crittersandcompanions:grappling_hook",

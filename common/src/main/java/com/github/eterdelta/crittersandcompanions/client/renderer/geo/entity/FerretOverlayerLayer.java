@@ -8,23 +8,23 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import java.util.Map;
 import net.minecraft.client.renderer.MultiBufferSource;
-import net.minecraft.client.renderer.RenderType;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.client.renderer.rendertype.RenderType;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.DyeColor;
 import org.jetbrains.annotations.Nullable;
-import software.bernie.geckolib.cache.object.BakedGeoModel;
-import software.bernie.geckolib.renderer.GeoRenderer;
-import software.bernie.geckolib.renderer.layer.GeoRenderLayer;
+import com.geckolib.cache.model.BakedGeoModel;
+import com.geckolib.renderer.GeoRenderer;
+import com.geckolib.renderer.layer.GeoRenderLayer;
 
 public class FerretOverlayerLayer extends GeoRenderLayer<FerretEntity> {
 
-    private static final Map<DyeColor, ResourceLocation> TEXTURES = createTextures(false);
-    private static final Map<DyeColor, ResourceLocation> BABY_TEXTURES = createTextures(true);
+    private static final Map<DyeColor, Identifier> TEXTURES = createTextures(false);
+    private static final Map<DyeColor, Identifier> BABY_TEXTURES = createTextures(true);
 
-    private static Map<DyeColor, ResourceLocation> createTextures(boolean baby) {
+    private static Map<DyeColor, Identifier> createTextures(boolean baby) {
         var base = baby ? "baby_ferret" : "ferret";
 
-        var map = new ImmutableMap.Builder<DyeColor, ResourceLocation>();
+        var map = new ImmutableMap.Builder<DyeColor, Identifier>();
         CACColors.supported().forEach(dye -> {
             var id = CrittersAndCompanions.createId("textures/entity/%s_tamed_overlay_%s.png".formatted(base, dye.getSerializedName()));
             map.put(dye, id);
@@ -38,7 +38,7 @@ public class FerretOverlayerLayer extends GeoRenderLayer<FerretEntity> {
 
     @Override
     @Nullable
-    protected ResourceLocation getTextureResource(FerretEntity animatable) {
+    protected Identifier getTextureResource(FerretEntity animatable) {
         var color = animatable.getCollarColor();
         if (color == null) return null;
         var map = animatable.isBaby() ? BABY_TEXTURES : TEXTURES;

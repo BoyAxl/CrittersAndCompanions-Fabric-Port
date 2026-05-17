@@ -2,16 +2,19 @@ package com.github.eterdelta.crittersandcompanions.client.model.geo;
 
 import com.github.eterdelta.crittersandcompanions.CrittersAndCompanions;
 import com.github.eterdelta.crittersandcompanions.entity.LeafInsectEntity;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.util.Mth;
-import software.bernie.geckolib.animation.AnimationState;
-import software.bernie.geckolib.constant.DataTickets;
-import software.bernie.geckolib.model.DefaultedEntityGeoModel;
-import software.bernie.geckolib.model.data.EntityModelData;
+import com.geckolib.constant.DataTickets;
+import com.geckolib.constant.dataticket.DataTicket;
+import com.geckolib.model.DefaultedEntityGeoModel;
+import com.geckolib.renderer.base.GeoRenderState;
 
 public class LeafInsectModel extends DefaultedEntityGeoModel<LeafInsectEntity> {
-    private static final ResourceLocation MODEL = CrittersAndCompanions.createId("leaf_insect");
-    private static final ResourceLocation[] TEXTURES = new ResourceLocation[]{
+    private static final Identifier MODEL = CrittersAndCompanions.createId("leaf_insect");
+    private static final Identifier MODEL_RESOURCE = CrittersAndCompanions.createId("entity/leaf_insect");
+    private static final Identifier ANIMATION_RESOURCE = CrittersAndCompanions.createId("entity/leaf_insect");
+    private static final DataTicket<Integer> VARIANT = DataTickets.create("cac_leaf_insect_variant", Integer.class);
+    private static final Identifier[] TEXTURES = new Identifier[]{
             CrittersAndCompanions.createId("textures/entity/leaf_insect_1.png"),
             CrittersAndCompanions.createId("textures/entity/leaf_insect_2.png"),
             CrittersAndCompanions.createId("textures/entity/leaf_insect_3.png")};
@@ -21,20 +24,24 @@ public class LeafInsectModel extends DefaultedEntityGeoModel<LeafInsectEntity> {
     }
 
     @Override
-    public ResourceLocation getTextureResource(LeafInsectEntity object) {
-        return TEXTURES[object.getVariant()];
+    public Identifier getModelResource(GeoRenderState renderState) {
+        return MODEL_RESOURCE;
     }
 
     @Override
-    public void setCustomAnimations(LeafInsectEntity animatable, long instanceId, AnimationState<LeafInsectEntity> animationState) {
-        var head = getAnimationProcessor().getBone("head_rotation");
+    public Identifier getTextureResource(GeoRenderState renderState) {
+        return TEXTURES[Mth.clamp(renderState.getOrDefaultGeckolibData(VARIANT, 0), 0, TEXTURES.length - 1)];
+    }
 
-        if (head != null) {
-            EntityModelData entityData = animationState.getData(DataTickets.ENTITY_MODEL_DATA);
+    @Override
+    public Identifier getAnimationResource(LeafInsectEntity animatable) {
+        return ANIMATION_RESOURCE;
+    }
 
-            head.setRotX(entityData.headPitch() * Mth.DEG_TO_RAD);
-            head.setRotY(entityData.netHeadYaw() * Mth.DEG_TO_RAD);
-        }
+    @Override
+    public void addAdditionalStateData(LeafInsectEntity animatable, Object relatedObject, GeoRenderState renderState) {
+        super.addAdditionalStateData(animatable, relatedObject, renderState);
+        renderState.addGeckolibData(VARIANT, animatable.getVariant());
     }
 
 }

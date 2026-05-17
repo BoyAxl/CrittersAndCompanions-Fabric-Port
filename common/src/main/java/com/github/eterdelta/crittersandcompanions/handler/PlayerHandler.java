@@ -28,7 +28,6 @@ import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
-import net.minecraft.world.item.context.UseOnContext;
 import org.jetbrains.annotations.Nullable;
 
 public class PlayerHandler {
@@ -38,13 +37,13 @@ public class PlayerHandler {
     }
 
     @Nullable
-    public static InteractionResult onPlayerEntityInteract(Entity target, UseOnContext context) {
+    public static InteractionResult onPlayerEntityInteract(Entity target, Player player, InteractionHand hand) {
         var isClient = target.level().isClientSide();
-        if (!(context.getPlayer() instanceof ISilkLeashState playerLeashState)) return null;
+        if (!(player instanceof ISilkLeashState playerLeashState)) return null;
         if (!(target instanceof LivingEntity entity)) return null;
 
-        ItemStack handStack = context.getItemInHand();
-        ItemStack otherHandStack = context.getPlayer().getItemInHand(getOppositeHand(context.getHand()));
+        ItemStack handStack = player.getItemInHand(hand);
+        ItemStack otherHandStack = player.getItemInHand(getOppositeHand(hand));
 
         Set<LivingEntity> playerLeashingEntities = playerLeashState.getLeashingEntities();
 
@@ -52,28 +51,28 @@ public class PlayerHandler {
 
         if ((playerLeashingEntities.isEmpty() || playerLeashingEntities.contains(entity))
                 && !(handStack.is(CACItems.SILK_LEAD.get()) || handStack.is(Items.LEAD))
-                && context.getHand() == InteractionHand.MAIN_HAND) {
+                && hand == InteractionHand.MAIN_HAND) {
 
             int unleashedStates = 0;
             unleashedStates += Math.max(0, SilkLeashItem.updateLeashStates(entity, null) - 1);
             unleashedStates += Math.max(0, SilkLeashItem.updateLeashStates(null, entity) - 1);
             if (unleashedStates > 0) {
-                ItemEntity leadEntity = new ItemEntity(context.getLevel(), entity.getX(), entity.getY(), entity.getZ(), new ItemStack(CACItems.SILK_LEAD.get(), unleashedStates));
-                context.getLevel().addFreshEntity(leadEntity);
+                ItemEntity leadEntity = new ItemEntity(player.level(), entity.getX(), entity.getY(), entity.getZ(), new ItemStack(CACItems.SILK_LEAD.get(), unleashedStates));
+                player.level().addFreshEntity(leadEntity);
 
                 playerLeashState.sendLeashState();
                 if (entity instanceof ISilkLeashState entityLeashState) {
                     entityLeashState.sendLeashState();
                 }
 
-                return InteractionResult.sidedSuccess(isClient);
+                return InteractionResult.SUCCESS;
             }
         } else {
             LivingEntity uniqueLeash = Iterables.getFirst(playerLeashingEntities, null);
 
             if (uniqueLeash != null && SilkLeashItem.updateLeashStates(uniqueLeash, entity) != 0) {
-                SilkLeashItem.updateLeashStates(context.getPlayer(), null);
-                return InteractionResult.sidedSuccess(isClient);
+                SilkLeashItem.updateLeashStates(player, null);
+                return InteractionResult.SUCCESS;
             }
         }
 

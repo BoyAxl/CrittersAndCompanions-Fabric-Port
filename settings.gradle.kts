@@ -1,12 +1,16 @@
 pluginManagement {
     repositories {
+        maven {
+            name = "Fabric"
+            url = uri("https://maven.fabricmc.net/")
+        }
+        mavenCentral()
         gradlePluginPortal()
-        mavenLocal()
     }
 }
 
 plugins {
-    id("com.possible-triangle.helper") version ("1.2")
+    id("org.gradle.toolchains.foojay-resolver-convention") version "1.0.0"
 }
 
-include("common", "fabric", "neoforge")
+rootProject.name = "crittersandcompanions-26-1-2-fabric"

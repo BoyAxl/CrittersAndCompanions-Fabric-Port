@@ -1,9 +1,7 @@
 {
   "type": "minecraft:crafting_shapeless",
   "ingredients": [
-    {
-      "item": "crittersandcompanions:silk"
-    }
+    "crittersandcompanions:silk"
   ],
   "result": {
     "id": "minecraft:string",

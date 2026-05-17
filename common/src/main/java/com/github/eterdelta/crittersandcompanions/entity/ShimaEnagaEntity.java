@@ -36,14 +36,14 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.gameevent.GameEvent;
 import net.minecraft.world.level.pathfinder.PathType;
 import net.minecraft.world.phys.Vec3;
-import software.bernie.geckolib.animatable.GeoEntity;
-import software.bernie.geckolib.animatable.instance.AnimatableInstanceCache;
-import software.bernie.geckolib.animation.AnimatableManager;
-import software.bernie.geckolib.animation.AnimationController;
-import software.bernie.geckolib.animation.AnimationState;
-import software.bernie.geckolib.animation.PlayState;
-import software.bernie.geckolib.animation.RawAnimation;
-import software.bernie.geckolib.util.GeckoLibUtil;
+import com.geckolib.animatable.GeoEntity;
+import com.geckolib.animatable.instance.AnimatableInstanceCache;
+import com.geckolib.animatable.manager.AnimatableManager;
+import com.geckolib.animation.AnimationController;
+import com.geckolib.animation.state.AnimationTest;
+import com.geckolib.animation.object.PlayState;
+import com.geckolib.animation.RawAnimation;
+import com.geckolib.util.GeckoLibUtil;
 
 public class ShimaEnagaEntity extends TamableAnimal implements FlyingAnimal, GeoEntity {
     private static final TagKey<Item> FOODS_TAG = TagKey.create(Registries.ITEM, CrittersAndCompanions.createId("shima_enaga_food"));
@@ -52,8 +52,8 @@ public class ShimaEnagaEntity extends TamableAnimal implements FlyingAnimal, Geo
     public ShimaEnagaEntity(EntityType<? extends TamableAnimal> entityType, Level level) {
         super(entityType, level);
         this.moveControl = new FlyingMoveControl(this, 10, false);
-        this.setPathfindingMalus(PathType.DANGER_FIRE, -1.0F);
-        this.setPathfindingMalus(PathType.DAMAGE_FIRE, -1.0F);
+        this.setPathfindingMalus(PathType.FIRE_IN_NEIGHBOR, -1.0F);
+        this.setPathfindingMalus(PathType.FIRE, -1.0F);
     }
 
     public static AttributeSupplier.Builder createAttributes() {
@@ -72,7 +72,7 @@ public class ShimaEnagaEntity extends TamableAnimal implements FlyingAnimal, Geo
     }
 
     @Override
-    public int getBaseExperienceReward() {
+    protected int getBaseExperienceReward(ServerLevel serverLevel) {
         return this.random.nextInt(2, 6);
     }
 
@@ -85,7 +85,7 @@ public class ShimaEnagaEntity extends TamableAnimal implements FlyingAnimal, Geo
     }
 
     @Override
-    public boolean causeFallDamage(float p_148989_, float p_148990_, DamageSource p_148991_) {
+    public boolean causeFallDamage(double p_148989_, float p_148990_, DamageSource p_148991_) {
         return false;
     }
 
@@ -128,7 +128,7 @@ public class ShimaEnagaEntity extends TamableAnimal implements FlyingAnimal, Geo
                     this.level().broadcastEntityEvent(this, (byte) 6);
                 }
             }
-            return InteractionResult.sidedSuccess(this.level().isClientSide());
+            return InteractionResult.SUCCESS;
         } else if (this.isTame() && this.isOwnedBy(player)) {
             if (!this.level().isClientSide()) {
                 if (handStack.is(FOODS_TAG) && this.getHealth() < this.getMaxHealth()) {
@@ -141,7 +141,7 @@ public class ShimaEnagaEntity extends TamableAnimal implements FlyingAnimal, Geo
                     this.setOrderedToSit(!this.isOrderedToSit());
                 }
             }
-            return InteractionResult.sidedSuccess(this.level().isClientSide());
+            return InteractionResult.SUCCESS;
         } else {
             return super.mobInteract(player, interactionHand);
         }
@@ -167,20 +167,20 @@ public class ShimaEnagaEntity extends TamableAnimal implements FlyingAnimal, Geo
         return 0.8F;
     }
 
-    private PlayState predicate(AnimationState<?> event) {
+    private PlayState predicate(AnimationTest<?> event) {
         if (isInSittingPose()) {
-            event.getController().setAnimation(RawAnimation.begin().thenLoop("shima_enaga_sit"));
+            event.controller().setAnimation(RawAnimation.begin().thenLoop("shima_enaga_sit"));
         } else if (onGround()) {
-            event.getController().setAnimation(RawAnimation.begin().thenLoop("shima_enaga_idle"));
+            event.controller().setAnimation(RawAnimation.begin().thenLoop("shima_enaga_idle"));
         } else {
-            event.getController().setAnimation(RawAnimation.begin().thenLoop("shima_enaga_fly"));
+            event.controller().setAnimation(RawAnimation.begin().thenLoop("shima_enaga_fly"));
         }
         return PlayState.CONTINUE;
     }
 
     @Override
     public void registerControllers(AnimatableManager.ControllerRegistrar controllers) {
-        controllers.add(new AnimationController<>(this, "controller", 4, this::predicate));
+        controllers.add(new AnimationController<>("controller", 4, this::predicate));
     }
 
     @Override

@@ -2,29 +2,27 @@ package com.github.eterdelta.crittersandcompanions.client.model.geo;
 
 import com.github.eterdelta.crittersandcompanions.CrittersAndCompanions;
 import com.github.eterdelta.crittersandcompanions.entity.JumpingSpiderEntity;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.util.Mth;
-import software.bernie.geckolib.animation.AnimationState;
-import software.bernie.geckolib.constant.DataTickets;
-import software.bernie.geckolib.model.DefaultedEntityGeoModel;
-import software.bernie.geckolib.model.data.EntityModelData;
+import net.minecraft.resources.Identifier;
+import com.geckolib.model.DefaultedEntityGeoModel;
+import com.geckolib.renderer.base.GeoRenderState;
 
 public class JumpingSpiderModel extends DefaultedEntityGeoModel<JumpingSpiderEntity> {
-    private static final ResourceLocation MODEL = CrittersAndCompanions.createId("jumping_spider");
+    private static final Identifier MODEL = CrittersAndCompanions.createId("jumping_spider");
+    private static final Identifier MODEL_RESOURCE = CrittersAndCompanions.createId("entity/jumping_spider");
+    private static final Identifier ANIMATION_RESOURCE = CrittersAndCompanions.createId("entity/jumping_spider");
 
     public JumpingSpiderModel() {
         super(MODEL);
     }
 
     @Override
-    public void setCustomAnimations(JumpingSpiderEntity animatable, long instanceId, AnimationState<JumpingSpiderEntity> animationState) {
-        var head = getAnimationProcessor().getBone("head_rotation");
-
-        if (head != null) {
-            EntityModelData entityData = animationState.getData(DataTickets.ENTITY_MODEL_DATA);
-
-            head.setRotX(entityData.headPitch() * Mth.DEG_TO_RAD);
-            head.setRotY(entityData.netHeadYaw() * Mth.DEG_TO_RAD);
-        }
+    public Identifier getModelResource(GeoRenderState renderState) {
+        return MODEL_RESOURCE;
     }
+
+    @Override
+    public Identifier getAnimationResource(JumpingSpiderEntity animatable) {
+        return ANIMATION_RESOURCE;
+    }
+
 }

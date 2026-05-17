@@ -338,9 +338,8 @@ public class OtterNavigation extends AmphibiousPathNavigation {
 
             if (malus < 0.0F
                     || malus >= 8.0F
-                    || pathType == PathType.DAMAGE_FIRE
-                    || pathType == PathType.DANGER_FIRE
-                    || pathType == PathType.DAMAGE_OTHER)
+                    || pathType == PathType.FIRE
+                    || pathType == PathType.FIRE_IN_NEIGHBOR)
                 return false;
 
         }

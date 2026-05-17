@@ -2,12 +2,19 @@ package com.github.eterdelta.crittersandcompanions.client.model.geo;
 
 import com.github.eterdelta.crittersandcompanions.CrittersAndCompanions;
 import com.github.eterdelta.crittersandcompanions.entity.KoiFishEntity;
-import net.minecraft.resources.ResourceLocation;
-import software.bernie.geckolib.model.DefaultedEntityGeoModel;
+import net.minecraft.resources.Identifier;
+import net.minecraft.util.Mth;
+import com.geckolib.constant.DataTickets;
+import com.geckolib.constant.dataticket.DataTicket;
+import com.geckolib.model.DefaultedEntityGeoModel;
+import com.geckolib.renderer.base.GeoRenderState;
 
 public class KoiFishModel extends DefaultedEntityGeoModel<KoiFishEntity> {
-    private static final ResourceLocation MODEL = CrittersAndCompanions.createId("koi_fish");
-    private static final ResourceLocation[] TEXTURES = new ResourceLocation[]{
+    private static final Identifier MODEL = CrittersAndCompanions.createId("koi_fish");
+    private static final Identifier MODEL_RESOURCE = CrittersAndCompanions.createId("entity/koi_fish");
+    private static final Identifier ANIMATION_RESOURCE = CrittersAndCompanions.createId("entity/koi_fish");
+    private static final DataTicket<Integer> VARIANT = DataTickets.create("cac_koi_fish_variant", Integer.class);
+    private static final Identifier[] TEXTURES = new Identifier[]{
             CrittersAndCompanions.createId("textures/entity/koi_fish_1.png"),
             CrittersAndCompanions.createId("textures/entity/koi_fish_2.png"),
             CrittersAndCompanions.createId("textures/entity/koi_fish_3.png"),
@@ -31,11 +38,27 @@ public class KoiFishModel extends DefaultedEntityGeoModel<KoiFishEntity> {
             CrittersAndCompanions.createId("textures/entity/koi_fish_21.png")};
 
     public KoiFishModel() {
-        super(MODEL, false);
+        super(MODEL);
     }
 
     @Override
-    public ResourceLocation getTextureResource(KoiFishEntity object) {
-        return TEXTURES[object.getVariant()];
+    public Identifier getModelResource(GeoRenderState renderState) {
+        return MODEL_RESOURCE;
+    }
+
+    @Override
+    public Identifier getTextureResource(GeoRenderState renderState) {
+        return TEXTURES[Mth.clamp(renderState.getOrDefaultGeckolibData(VARIANT, 0), 0, TEXTURES.length - 1)];
+    }
+
+    @Override
+    public Identifier getAnimationResource(KoiFishEntity animatable) {
+        return ANIMATION_RESOURCE;
+    }
+
+    @Override
+    public void addAdditionalStateData(KoiFishEntity animatable, Object relatedObject, GeoRenderState renderState) {
+        super.addAdditionalStateData(animatable, relatedObject, renderState);
+        renderState.addGeckolibData(VARIANT, animatable.getVariant());
     }
 }

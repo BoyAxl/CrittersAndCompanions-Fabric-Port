@@ -17,7 +17,7 @@ import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.AgeableMob;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.Mob;
-import net.minecraft.world.entity.MobSpawnType;
+import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.MoverType;
 import net.minecraft.world.entity.TamableAnimal;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
@@ -46,15 +46,15 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.gameevent.GameEvent;
 import net.minecraft.world.level.pathfinder.PathType;
 import net.minecraft.world.phys.Vec3;
-import software.bernie.geckolib.animatable.GeoAnimatable;
-import software.bernie.geckolib.animatable.GeoEntity;
-import software.bernie.geckolib.animatable.instance.AnimatableInstanceCache;
-import software.bernie.geckolib.animation.AnimatableManager;
-import software.bernie.geckolib.animation.AnimationController;
-import software.bernie.geckolib.animation.AnimationState;
-import software.bernie.geckolib.animation.PlayState;
-import software.bernie.geckolib.animation.RawAnimation;
-import software.bernie.geckolib.util.GeckoLibUtil;
+import com.geckolib.animatable.GeoAnimatable;
+import com.geckolib.animatable.GeoEntity;
+import com.geckolib.animatable.instance.AnimatableInstanceCache;
+import com.geckolib.animatable.manager.AnimatableManager;
+import com.geckolib.animation.AnimationController;
+import com.geckolib.animation.state.AnimationTest;
+import com.geckolib.animation.object.PlayState;
+import com.geckolib.animation.RawAnimation;
+import com.geckolib.util.GeckoLibUtil;
 
 public class DragonflyEntity extends TamableAnimal implements GeoEntity {
 
@@ -66,16 +66,16 @@ public class DragonflyEntity extends TamableAnimal implements GeoEntity {
         super(entityType, level);
         this.moveControl = new DragonflyMoveControl(this);
 
-        this.setPathfindingMalus(PathType.DANGER_FIRE, -1.0F);
+        this.setPathfindingMalus(PathType.FIRE_IN_NEIGHBOR, -1.0F);
         this.setPathfindingMalus(PathType.COCOA, -1.0F);
         this.setPathfindingMalus(PathType.FENCE, -1.0F);
     }
 
     public static AttributeSupplier.Builder createAttributes() {
-        return Mob.createMobAttributes().add(Attributes.MAX_HEALTH, 4.0D).add(Attributes.ATTACK_DAMAGE, 2.0D).add(Attributes.FLYING_SPEED, 0.25D);
+        return Mob.createMobAttributes().add(Attributes.MAX_HEALTH, 4.0D).add(Attributes.ATTACK_DAMAGE, 2.0D).add(Attributes.FLYING_SPEED, 0.25D).add(Attributes.TEMPT_RANGE, 10.0D);
     }
 
-    public static boolean checkDragonflySpawnRules(EntityType<DragonflyEntity> entityType, LevelAccessor levelAccessor, MobSpawnType spawnType, BlockPos blockPos, RandomSource random) {
+    public static boolean checkDragonflySpawnRules(EntityType<DragonflyEntity> entityType, LevelAccessor levelAccessor, EntitySpawnReason spawnType, BlockPos blockPos, RandomSource random) {
         int seaLevel = levelAccessor.getSeaLevel();
         return blockPos.getY() > seaLevel - 10 && blockPos.getY() <= seaLevel + 16 && levelAccessor.getBlockState(blockPos).isAir() && levelAccessor.getRawBrightness(blockPos, 0) > 8;
     }
@@ -85,14 +85,14 @@ public class DragonflyEntity extends TamableAnimal implements GeoEntity {
         this.goalSelector.addGoal(0, new SitWhenOrderedToGoal(this));
         this.goalSelector.addGoal(1, new MeleeAttackGoal(this, 1.0D, true));
         this.goalSelector.addGoal(2, new FollowOwnerGoal(this, 1.0D, 6.0F, 2.0F));
-        this.goalSelector.addGoal(3, new TemptGoal(this, 1.0D, Ingredient.of(FOODS_TAG), false));
+        this.goalSelector.addGoal(3, new TemptGoal(this, 1.0D, this.ingredient(FOODS_TAG), false));
         this.goalSelector.addGoal(4, new RandomFlyGoal());
 
         this.targetSelector.addGoal(0, new OwnerHurtByTargetGoal(this));
     }
 
     @Override
-    public int getBaseExperienceReward() {
+    protected int getBaseExperienceReward(ServerLevel serverLevel) {
         return this.random.nextInt(2, 5);
     }
 
@@ -113,8 +113,8 @@ public class DragonflyEntity extends TamableAnimal implements GeoEntity {
     }
 
     @Override
-    protected void customServerAiStep() {
-        super.customServerAiStep();
+    protected void customServerAiStep(ServerLevel serverLevel) {
+        super.customServerAiStep(serverLevel);
         if (this.isOrderedToSit()) {
             this.setDeltaMovement(this.getDeltaMovement().subtract(0.0D, 0.16D, 0.0D));
         }
@@ -138,7 +138,7 @@ public class DragonflyEntity extends TamableAnimal implements GeoEntity {
     }
 
     @Override
-    public boolean causeFallDamage(float p_147187_, float p_147188_, DamageSource p_147189_) {
+    public boolean causeFallDamage(double p_147187_, float p_147188_, DamageSource p_147189_) {
         return false;
     }
 
@@ -161,7 +161,6 @@ public class DragonflyEntity extends TamableAnimal implements GeoEntity {
                 if (!this.level().isClientSide()) {
                     if (handStack.getItem() instanceof DragonflyArmorItem && this.getArmor().isEmpty()) {
                         this.setArmor(handStack.copy());
-                        handStack.shrink(1);
                         if (!player.getAbilities().instabuild) {
                             handStack.shrink(1);
                         }
@@ -176,7 +175,7 @@ public class DragonflyEntity extends TamableAnimal implements GeoEntity {
                         this.setOrderedToSit(!this.isOrderedToSit());
                     }
                 }
-                return InteractionResult.sidedSuccess(this.level().isClientSide());
+                return InteractionResult.SUCCESS;
             }
         } else {
             if (handStack.is(FOODS_TAG)) {
@@ -191,7 +190,7 @@ public class DragonflyEntity extends TamableAnimal implements GeoEntity {
                         this.level().broadcastEntityEvent(this, (byte) 6);
                     }
                 }
-                return InteractionResult.sidedSuccess(this.level().isClientSide());
+                return InteractionResult.SUCCESS;
             }
         }
         return super.mobInteract(player, hand);
@@ -224,11 +223,11 @@ public class DragonflyEntity extends TamableAnimal implements GeoEntity {
         return null;
     }
 
-    private PlayState predicate(AnimationState<?> event) {
+    private PlayState predicate(AnimationTest<?> event) {
         if (this.isInSittingPose()) {
-            event.getController().setAnimation(RawAnimation.begin().thenLoop("dragonfly_sit"));
+            event.controller().setAnimation(RawAnimation.begin().thenLoop("dragonfly_sit"));
         } else {
-            event.getController().setAnimation(RawAnimation.begin().thenLoop("dragonfly_fly"));
+            event.controller().setAnimation(RawAnimation.begin().thenLoop("dragonfly_fly"));
         }
         return PlayState.CONTINUE;
     }
@@ -241,9 +240,13 @@ public class DragonflyEntity extends TamableAnimal implements GeoEntity {
         setBodyArmorItem(armorItem);
     }
 
+    private Ingredient ingredient(TagKey<Item> tag) {
+        return Ingredient.of(this.registryAccess().lookupOrThrow(Registries.ITEM).getOrThrow(tag));
+    }
+
     @Override
     public void registerControllers(AnimatableManager.ControllerRegistrar controllers) {
-        controllers.add(new AnimationController<GeoAnimatable>(this, "controller", 0, this::predicate));
+        controllers.add(new AnimationController<GeoAnimatable>("controller", 0, this::predicate));
     }
 
     @Override

@@ -7,6 +7,7 @@ import com.github.eterdelta.crittersandcompanions.platform.RegistryEntry;
 import com.github.eterdelta.crittersandcompanions.platform.RegistryHelper;
 import com.github.eterdelta.crittersandcompanions.platform.Services;
 import net.minecraft.core.registries.Registries;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.state.BlockBehaviour;
@@ -15,8 +16,16 @@ import net.minecraft.world.level.material.PushReaction;
 public class CACBlocks {
     private static final RegistryHelper<Block> BLOCKS = Services.PLATFORM.createRegistryHelper(Registries.BLOCK, CrittersAndCompanions.MODID);
 
-    public static final RegistryEntry<Block> SILK_COCOON = BLOCKS.register("silk_cocoon", () -> new SilkCocoonBlock(BlockBehaviour.Properties.of().instabreak().sound(SoundType.WOOL).pushReaction(PushReaction.DESTROY)));
-    public static final RegistryEntry<Block> SEA_BUNNY_SLIME_BLOCK = BLOCKS.register("sea_bunny_slime_block", () -> new SeaBunnySlimeBlock(BlockBehaviour.Properties.of().noOcclusion().dynamicShape().sound(SoundType.SLIME_BLOCK)));
+    public static final RegistryEntry<Block> SILK_COCOON = BLOCKS.register("silk_cocoon", () -> new SilkCocoonBlock(properties("silk_cocoon").instabreak().sound(SoundType.WOOL).pushReaction(PushReaction.DESTROY)));
+    public static final RegistryEntry<Block> SEA_BUNNY_SLIME_BLOCK = BLOCKS.register("sea_bunny_slime_block", () -> new SeaBunnySlimeBlock(properties("sea_bunny_slime_block").noOcclusion().dynamicShape().sound(SoundType.SLIME_BLOCK)));
+
+    private static BlockBehaviour.Properties properties(String id) {
+        return BlockBehaviour.Properties.of().setId(key(id));
+    }
+
+    private static ResourceKey<Block> key(String id) {
+        return ResourceKey.create(Registries.BLOCK, CrittersAndCompanions.createId(id));
+    }
 
     public static void init() {
         // Load the class

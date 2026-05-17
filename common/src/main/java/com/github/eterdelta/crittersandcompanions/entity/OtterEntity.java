@@ -34,7 +34,7 @@ import net.minecraft.world.entity.AgeableMob;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.Mob;
-import net.minecraft.world.entity.MobSpawnType;
+import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.MoverType;
 import net.minecraft.world.entity.SpawnGroupData;
 import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
@@ -46,13 +46,14 @@ import net.minecraft.world.entity.ai.goal.Goal;
 import net.minecraft.world.entity.ai.goal.MeleeAttackGoal;
 import net.minecraft.world.entity.ai.goal.target.NearestAttackableTargetGoal;
 import net.minecraft.world.entity.ai.navigation.PathNavigation;
-import net.minecraft.world.entity.animal.AbstractFish;
-import net.minecraft.world.entity.animal.AbstractSchoolingFish;
+import net.minecraft.world.entity.animal.fish.AbstractFish;
+import net.minecraft.world.entity.animal.fish.AbstractSchoolingFish;
 import net.minecraft.world.entity.animal.Animal;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.ItemStackTemplate;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelAccessor;
 import net.minecraft.world.level.ServerLevelAccessor;
@@ -60,16 +61,18 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.material.Fluid;
 import net.minecraft.world.level.pathfinder.Path;
 import net.minecraft.world.level.pathfinder.PathType;
+import net.minecraft.world.level.storage.ValueInput;
+import net.minecraft.world.level.storage.ValueOutput;
 import net.minecraft.world.phys.Vec3;
-import software.bernie.geckolib.animatable.GeoEntity;
-import software.bernie.geckolib.animatable.instance.AnimatableInstanceCache;
-import software.bernie.geckolib.animation.AnimatableManager;
-import software.bernie.geckolib.animation.Animation;
-import software.bernie.geckolib.animation.AnimationController;
-import software.bernie.geckolib.animation.AnimationState;
-import software.bernie.geckolib.animation.PlayState;
-import software.bernie.geckolib.animation.RawAnimation;
-import software.bernie.geckolib.util.GeckoLibUtil;
+import com.geckolib.animatable.GeoEntity;
+import com.geckolib.animatable.instance.AnimatableInstanceCache;
+import com.geckolib.animatable.manager.AnimatableManager;
+import com.geckolib.animation.AnimationController;
+import com.geckolib.animation.state.AnimationTest;
+import com.geckolib.animation.object.LoopType;
+import com.geckolib.animation.object.PlayState;
+import com.geckolib.animation.RawAnimation;
+import com.geckolib.util.GeckoLibUtil;
 
 public class OtterEntity extends Animal implements GeoEntity {
     private static final EntityDataAccessor<Boolean> FLOATING = SynchedEntityData.defineId(OtterEntity.class, EntityDataSerializers.BOOLEAN);
@@ -97,7 +100,7 @@ public class OtterEntity extends Animal implements GeoEntity {
         return Mob.createMobAttributes().add(Attributes.MAX_HEALTH, 16.0D).add(Attributes.MOVEMENT_SPEED, 0.25D).add(Attributes.ATTACK_DAMAGE, 3.0D);
     }
 
-    public static boolean checkOtterSpawnRules(EntityType<OtterEntity> entityType, LevelAccessor levelAccessor, MobSpawnType spawnType, BlockPos blockPos, RandomSource random) {
+    public static boolean checkOtterSpawnRules(EntityType<OtterEntity> entityType, LevelAccessor levelAccessor, EntitySpawnReason spawnType, BlockPos blockPos, RandomSource random) {
         return blockPos.getY() > levelAccessor.getSeaLevel() - 16;
     }
 
@@ -121,39 +124,39 @@ public class OtterEntity extends Animal implements GeoEntity {
         this.goalSelector.addGoal(8, new LookAtPlayerGoal(this));
         this.goalSelector.addGoal(9, new RandomLookAroundGoal(this));
 
-        this.targetSelector.addGoal(1, new NearestAttackableTargetGoal<>(this, AbstractFish.class, 20, false, false, (fish) -> fish instanceof AbstractSchoolingFish && this.getHuntDelay() <= 0));
+        this.targetSelector.addGoal(1, new NearestAttackableTargetGoal<AbstractFish>(this, AbstractFish.class, 20, false, false, (fish, serverLevel) -> fish instanceof AbstractSchoolingFish && this.getHuntDelay() <= 0));
     }
 
     @Override
-    public void addAdditionalSaveData(CompoundTag compound) {
-        super.addAdditionalSaveData(compound);
-        compound.putInt("HuntDelay", this.getHuntDelay());
-        compound.putBoolean("Floating", this.isFloating());
-        compound.putInt("FloatTime", this.floatTime);
-        compound.putBoolean("Eating", this.isEating());
-        compound.putInt("EatDelay", this.eatDelay);
+    public void addAdditionalSaveData(ValueOutput output) {
+        super.addAdditionalSaveData(output);
+        output.putInt("HuntDelay", this.getHuntDelay());
+        output.putBoolean("Floating", this.isFloating());
+        output.putInt("FloatTime", this.floatTime);
+        output.putBoolean("Eating", this.isEating());
+        output.putInt("EatDelay", this.eatDelay);
     }
 
     @Override
-    public void readAdditionalSaveData(CompoundTag compound) {
-        super.readAdditionalSaveData(compound);
-        this.huntDelay = compound.getInt("HuntDelay");
-        this.setFloating(compound.getBoolean("Floating"));
-        this.floatTime = compound.getInt("FloatTime");
-        this.setEating(compound.getBoolean("Eating"));
-        this.eatDelay = compound.getInt("EatDelay");
+    public void readAdditionalSaveData(ValueInput input) {
+        super.readAdditionalSaveData(input);
+        this.huntDelay = input.getIntOr("HuntDelay", 0);
+        this.setFloating(input.getBooleanOr("Floating", false));
+        this.floatTime = input.getIntOr("FloatTime", 0);
+        this.setEating(input.getBooleanOr("Eating", false));
+        this.eatDelay = input.getIntOr("EatDelay", 0);
     }
 
     @Override
-    public void awardKillScore(Entity killedEntity, int i, DamageSource damageSource) {
-        super.awardKillScore(killedEntity, i, damageSource);
+    public void awardKillScore(Entity killedEntity, DamageSource damageSource) {
+        super.awardKillScore(killedEntity, damageSource);
         if (killedEntity instanceof AbstractSchoolingFish) {
             this.huntDelay = 6000;
         }
     }
 
     @Override
-    protected int getBaseExperienceReward() {
+    protected int getBaseExperienceReward(ServerLevel serverLevel) {
         return this.random.nextInt(3, 7);
     }
 
@@ -186,7 +189,7 @@ public class OtterEntity extends Animal implements GeoEntity {
     @Override
     public void aiStep() {
         super.aiStep();
-        if (this.isAlive() && this.isControlledByLocalInstance()) {
+        if (this.isAlive() && this.isEffectiveAi()) {
             if (this.isFloating()) {
                 this.setDeltaMovement(this.getDeltaMovement().multiply(1.0D, 0.0D, 1.0D));
                 this.setYya(0.0F);
@@ -235,7 +238,7 @@ public class OtterEntity extends Animal implements GeoEntity {
 
     private void breakAndEat(ServerLevel level, ItemStack held) {
         Vec3 mouthPos = calculateMouthPos();
-        level.sendParticles(new ItemParticleOption(ParticleTypes.ITEM, held.copy()), mouthPos.x(), mouthPos.y(), mouthPos.z(), 2, 0.0D, 0.1D, 0.0D, 0.05D);
+        level.sendParticles(new ItemParticleOption(ParticleTypes.ITEM, ItemStackTemplate.fromNonEmptyStack(held.copy())), mouthPos.x(), mouthPos.y(), mouthPos.z(), 2, 0.0D, 0.1D, 0.0D, 0.05D);
         var sound = getMainHandItem().is(CACItems.CLAM.get()) && !breakingClamOnLand() ?
                 CACSounds.OTTER_CLAM_BREAK.get()
                 : CACSounds.OTTER_EAT.get();
@@ -257,22 +260,18 @@ public class OtterEntity extends Animal implements GeoEntity {
             itemStack.shrink(1);
             return itemStack;
         } else {
-            return eat(level, itemStack);
+            itemStack.shrink(1);
+            return itemStack;
         }
     }
 
     @Override
-    public float getScale() {
-        return this.isBaby() ? 0.6F : 1.0F;
-    }
-
-    @Override
-    protected void pickUpItem(ItemEntity itemEntity) {
+    protected void pickUpItem(ServerLevel serverLevel, ItemEntity itemEntity) {
         if (this.rejectedItem(itemEntity)) {
             return;
         }
 
-        super.pickUpItem(itemEntity);
+        super.pickUpItem(serverLevel, itemEntity);
     }
 
     @Override
@@ -293,7 +292,7 @@ public class OtterEntity extends Animal implements GeoEntity {
 
     @Override
     public void travel(Vec3 speed) {
-        if (this.isControlledByLocalInstance() && this.isInWater()) {
+        if (this.isEffectiveAi() && this.isInWater()) {
             this.moveRelative(this.getSpeed(), speed);
             this.move(MoverType.SELF, this.getDeltaMovement());
             this.setDeltaMovement(this.getDeltaMovement().scale(0.9D));
@@ -331,13 +330,13 @@ public class OtterEntity extends Animal implements GeoEntity {
 
     @Override
     public AgeableMob getBreedOffspring(ServerLevel level, AgeableMob ageableMob) {
-        OtterEntity otter = CACEntities.OTTER.get().create(level);
+        OtterEntity otter = CACEntities.OTTER.get().create(level, EntitySpawnReason.BREEDING);
         return otter;
     }
 
     @Override
-    public boolean doHurtTarget(Entity entity) {
-        if (super.doHurtTarget(entity)) {
+    public boolean doHurtTarget(ServerLevel serverLevel, Entity entity) {
+        if (super.doHurtTarget(serverLevel, entity)) {
             this.playSound(CACSounds.BITE_ATTACK.get(), this.getSoundVolume(), this.getVoicePitch());
             return true;
         } else {
@@ -366,12 +365,12 @@ public class OtterEntity extends Animal implements GeoEntity {
     }
 
     @Override
-    public SpawnGroupData finalizeSpawn(ServerLevelAccessor levelAccessor, DifficultyInstance difficultyInstance, MobSpawnType mobSpawnType, SpawnGroupData spawnGroupData) {
+    public SpawnGroupData finalizeSpawn(ServerLevelAccessor levelAccessor, DifficultyInstance difficultyInstance, EntitySpawnReason mobSpawnType, SpawnGroupData spawnGroupData) {
         spawnGroupData = super.finalizeSpawn(levelAccessor, difficultyInstance, mobSpawnType, spawnGroupData);
-        if (mobSpawnType.equals(MobSpawnType.SPAWNER) && this.random.nextFloat() <= 0.2F) {
+        if (mobSpawnType.equals(EntitySpawnReason.SPAWNER) && this.random.nextFloat() <= 0.2F) {
             for (int i = 0; i < this.random.nextInt(1, 4); i++) {
-                OtterEntity baby = CACEntities.OTTER.get().create(this.level());
-                baby.moveTo(this.getX(), this.getY(), this.getZ(), this.getYRot(), 0.0F);
+                OtterEntity baby = CACEntities.OTTER.get().create(this.level(), EntitySpawnReason.SPAWNER);
+                baby.snapTo(this.getX(), this.getY(), this.getZ(), this.getYRot(), 0.0F);
                 baby.setBaby(true);
                 levelAccessor.addFreshEntity(baby);
             }
@@ -379,17 +378,17 @@ public class OtterEntity extends Animal implements GeoEntity {
         return spawnGroupData;
     }
 
-    private RawAnimation animation(AnimationState<?> event) {
+    private RawAnimation animation(AnimationTest<?> event) {
         if (isFloating()) {
             return RawAnimation.begin().thenLoop("swim_2");
         }
 
         if (isEating()) {
             if (getMainHandItem().is(CACItems.CLAM.get())) {
-                return RawAnimation.begin().then("standing_eat_clam", Animation.LoopType.PLAY_ONCE);
+                return RawAnimation.begin().then("standing_eat_clam", LoopType.PLAY_ONCE);
             }
 
-            return RawAnimation.begin().then("standing_eat", Animation.LoopType.PLAY_ONCE);
+            return RawAnimation.begin().then("standing_eat", LoopType.PLAY_ONCE);
         }
 
         if (isInWater()) {
@@ -407,24 +406,24 @@ public class OtterEntity extends Animal implements GeoEntity {
         return RawAnimation.begin().thenLoop("idle");
     }
 
-    private PlayState predicate(AnimationState<?> event) {
-        event.getController().setAnimation(animation(event));
+    private PlayState predicate(AnimationTest<?> event) {
+        event.controller().setAnimation(animation(event));
         return PlayState.CONTINUE;
     }
 
-    private PlayState floatingHandsPredicate(AnimationState<?> event) {
+    private PlayState floatingHandsPredicate(AnimationTest<?> event) {
         if (isFloating() && isEating()) {
-            event.getController().setAnimation(RawAnimation.begin().then("floating_eat", Animation.LoopType.PLAY_ONCE));
+            event.controller().setAnimation(RawAnimation.begin().then("floating_eat", LoopType.PLAY_ONCE));
             return PlayState.CONTINUE;
         }
-        event.getController().forceAnimationReset();
+        event.controller().reset();
         return PlayState.STOP;
     }
 
     @Override
     public void registerControllers(AnimatableManager.ControllerRegistrar controllers) {
-        controllers.add(new AnimationController<>(this, "controller", 4, this::predicate));
-        controllers.add(new AnimationController<>(this, "floating_hands_controller", 4, this::floatingHandsPredicate));
+        controllers.add(new AnimationController<>("controller", 4, this::predicate));
+        controllers.add(new AnimationController<>("floating_hands_controller", 4, this::floatingHandsPredicate));
     }
 
     @Override
@@ -454,6 +453,12 @@ public class OtterEntity extends Animal implements GeoEntity {
         return false;
     }
 
+    private boolean canPickUpFood(ItemEntity itemEntity) {
+        return this.level() instanceof ServerLevel serverLevel
+                && this.wantsToPickUp(serverLevel, itemEntity.getItem())
+                && !this.rejectedItem(itemEntity);
+    }
+
     private void startEating() {
         if (this.isFood(this.getMainHandItem())) {
             this.eatDelay = this.getMainHandItem().is(CACItems.CLAM.get()) ? 45 : 12;
@@ -470,7 +475,7 @@ public class OtterEntity extends Animal implements GeoEntity {
     }
 
     public Vec3 calculateMouthPos() {
-        Vec3 viewVector = this.getViewVector(0.0F).scale(this.isFloating() ? 0.3D : 0.6D).add(0.0D, this.isFloating() ? 0.55D : 0.0D, 0.0D).scale(this.getScale());
+        Vec3 viewVector = this.getViewVector(0.0F).scale(this.isFloating() ? 0.3D : 0.6D).add(0.0D, this.isFloating() ? 0.55D : 0.0D, 0.0D).scale(this.getAgeScale());
         return new Vec3(this.getX() + viewVector.x(), this.getY() + viewVector.y(), this.getZ() + viewVector.z());
     }
 
@@ -789,7 +794,7 @@ public class OtterEntity extends Animal implements GeoEntity {
         public void tick() {
             // Embed goals sometimes computee client sided ticks due to a sync error, although this happens in singleplayer
             // it's better to encapsulate the method
-            if (OtterEntity.this.level().isClientSide) {
+            if (OtterEntity.this.level().isClientSide()) {
                 return;
             }
 
@@ -928,14 +933,14 @@ public class OtterEntity extends Animal implements GeoEntity {
             if (!OtterEntity.this.getMainHandItem().isEmpty()) {
                 return false;
             } else {
-                List<ItemEntity> itemsInRadius = OtterEntity.this.level().getEntitiesOfClass(ItemEntity.class, OtterEntity.this.getBoundingBox().inflate(8.0D, 8.0D, 8.0D), (itemEntity -> OtterEntity.this.wantsToPickUp(itemEntity.getItem()) && !OtterEntity.this.rejectedItem(itemEntity)));
+                List<ItemEntity> itemsInRadius = OtterEntity.this.level().getEntitiesOfClass(ItemEntity.class, OtterEntity.this.getBoundingBox().inflate(8.0D, 8.0D, 8.0D), OtterEntity.this::canPickUpFood);
                 return !itemsInRadius.isEmpty();
             }
         }
 
         @Override
         public void tick() {
-            List<ItemEntity> itemsInRadius = OtterEntity.this.level().getEntitiesOfClass(ItemEntity.class, OtterEntity.this.getBoundingBox().inflate(8.0D, 8.0D, 8.0D), (itemEntity -> OtterEntity.this.wantsToPickUp(itemEntity.getItem()) && !OtterEntity.this.rejectedItem(itemEntity)));
+            List<ItemEntity> itemsInRadius = OtterEntity.this.level().getEntitiesOfClass(ItemEntity.class, OtterEntity.this.getBoundingBox().inflate(8.0D, 8.0D, 8.0D), OtterEntity.this::canPickUpFood);
             ItemStack handStack = OtterEntity.this.getMainHandItem();
             if (handStack.isEmpty() && !itemsInRadius.isEmpty()) {
                 Path path = OtterEntity.this.getNavigation().createPath(itemsInRadius.get(0), 0);
@@ -945,7 +950,7 @@ public class OtterEntity extends Animal implements GeoEntity {
 
         @Override
         public void start() {
-            List<ItemEntity> itemsInRadius = OtterEntity.this.level().getEntitiesOfClass(ItemEntity.class, OtterEntity.this.getBoundingBox().inflate(8.0D, 8.0D, 8.0D), (itemEntity -> OtterEntity.this.wantsToPickUp(itemEntity.getItem()) && !OtterEntity.this.rejectedItem(itemEntity)));
+            List<ItemEntity> itemsInRadius = OtterEntity.this.level().getEntitiesOfClass(ItemEntity.class, OtterEntity.this.getBoundingBox().inflate(8.0D, 8.0D, 8.0D), OtterEntity.this::canPickUpFood);
             if (!itemsInRadius.isEmpty()) {
                 Path path = OtterEntity.this.getNavigation().createPath(itemsInRadius.get(0), 0);
                 OtterEntity.this.getNavigation().moveTo(path, 1.0D);

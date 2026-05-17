@@ -25,7 +25,7 @@ import net.minecraft.world.entity.AgeableMob;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
-import net.minecraft.world.entity.MobSpawnType;
+import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.SpawnGroupData;
 import net.minecraft.world.entity.TamableAnimal;
 import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
@@ -49,15 +49,17 @@ import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.ServerLevelAccessor;
 import net.minecraft.world.level.gameevent.GameEvent;
-import software.bernie.geckolib.animatable.GeoEntity;
-import software.bernie.geckolib.animatable.instance.AnimatableInstanceCache;
-import software.bernie.geckolib.animation.AnimatableManager;
-import software.bernie.geckolib.animation.Animation;
-import software.bernie.geckolib.animation.AnimationController;
-import software.bernie.geckolib.animation.AnimationState;
-import software.bernie.geckolib.animation.PlayState;
-import software.bernie.geckolib.animation.RawAnimation;
-import software.bernie.geckolib.util.GeckoLibUtil;
+import net.minecraft.world.level.storage.ValueInput;
+import net.minecraft.world.level.storage.ValueOutput;
+import com.geckolib.animatable.GeoEntity;
+import com.geckolib.animatable.instance.AnimatableInstanceCache;
+import com.geckolib.animatable.manager.AnimatableManager;
+import com.geckolib.animation.AnimationController;
+import com.geckolib.animation.state.AnimationTest;
+import com.geckolib.animation.object.LoopType;
+import com.geckolib.animation.object.PlayState;
+import com.geckolib.animation.RawAnimation;
+import com.geckolib.util.GeckoLibUtil;
 
 public class RedPandaEntity extends TamableAnimal implements GeoEntity {
 
@@ -88,7 +90,7 @@ public class RedPandaEntity extends TamableAnimal implements GeoEntity {
     }
 
     public static AttributeSupplier.Builder createAttributes() {
-        return Mob.createMobAttributes().add(Attributes.MAX_HEALTH, 18.0D).add(Attributes.MOVEMENT_SPEED, 0.3D);
+        return Mob.createMobAttributes().add(Attributes.MAX_HEALTH, 18.0D).add(Attributes.MOVEMENT_SPEED, 0.3D).add(Attributes.TEMPT_RANGE, 10.0D);
     }
 
     @Override
@@ -106,7 +108,7 @@ public class RedPandaEntity extends TamableAnimal implements GeoEntity {
         this.goalSelector.addGoal(3, new SitWhenOrderedToGoal(this));
         this.goalSelector.addGoal(4, new SleepGoal(140));
         this.goalSelector.addGoal(5, new BreedGoal(this, 1.25D));
-        this.goalSelector.addGoal(6, new TemptGoal(this, 1.0D, Ingredient.of(TEMPT_TAG), false));
+        this.goalSelector.addGoal(6, new TemptGoal(this, 1.0D, this.ingredient(TEMPT_TAG), false));
         this.goalSelector.addGoal(7, new SprintingFollowParentGoal(this, 1.25D, 10.0F, 5.0F, 2.0F));
         this.goalSelector.addGoal(8, new FollowParentGoal(this, 1.0D));
         this.goalSelector.addGoal(9, new WaterAvoidingRandomStrollGoal(this, 1.0D));
@@ -115,32 +117,27 @@ public class RedPandaEntity extends TamableAnimal implements GeoEntity {
     }
 
     @Override
-    public void addAdditionalSaveData(CompoundTag compound) {
-        super.addAdditionalSaveData(compound);
-        compound.putBoolean("Sleeping", this.isSleeping());
-        compound.putBoolean("Alert", this.isAlert());
+    public void addAdditionalSaveData(ValueOutput output) {
+        super.addAdditionalSaveData(output);
+        output.putBoolean("Sleeping", this.isSleeping());
+        output.putBoolean("Alert", this.isAlert());
     }
 
     @Override
-    public void readAdditionalSaveData(CompoundTag compound) {
-        super.readAdditionalSaveData(compound);
-        this.setSleeping(compound.getBoolean("Sleeping"));
-        this.setAlert(compound.getBoolean("Alert"));
+    public void readAdditionalSaveData(ValueInput input) {
+        super.readAdditionalSaveData(input);
+        this.setSleeping(input.getBooleanOr("Sleeping", false));
+        this.setAlert(input.getBooleanOr("Alert", false));
     }
 
     @Override
-    public int getBaseExperienceReward() {
+    protected int getBaseExperienceReward(ServerLevel serverLevel) {
         return this.random.nextInt(2, 5);
     }
 
     @Override
-    public float getScale() {
-        return this.isBaby() ? 0.6F : 1.0F;
-    }
-
-    @Override
     public AgeableMob getBreedOffspring(ServerLevel level, AgeableMob ageableMob) {
-        RedPandaEntity redPanda = CACEntities.RED_PANDA.get().create(level);
+        RedPandaEntity redPanda = CACEntities.RED_PANDA.get().create(level, EntitySpawnReason.BREEDING);
         return redPanda;
     }
 
@@ -162,19 +159,19 @@ public class RedPandaEntity extends TamableAnimal implements GeoEntity {
                             this.level().broadcastEntityEvent(this, (byte) 6);
                         }
                     }
-                    return InteractionResult.sidedSuccess(this.level().isClientSide());
+                    return InteractionResult.SUCCESS;
                 }
             } else if (this.isTame() && this.isOwnedBy(player)) {
                 if (!this.isFood(handStack) && !handStack.is(TEMPT_TAG)) {
                     this.setOrderedToSit(!this.isOrderedToSit());
-                    return InteractionResult.sidedSuccess(this.level().isClientSide());
+                    return InteractionResult.SUCCESS;
                 } else if (this.getHealth() < this.getMaxHealth()) {
                     this.gameEvent(GameEvent.EAT, this);
                     this.heal(2.0F);
                     if (!player.getAbilities().instabuild) {
                         handStack.shrink(1);
                     }
-                    return InteractionResult.sidedSuccess(this.level().isClientSide());
+                    return InteractionResult.SUCCESS;
                 }
             }
             return super.mobInteract(player, interactionHand);
@@ -204,12 +201,12 @@ public class RedPandaEntity extends TamableAnimal implements GeoEntity {
     }
 
     @Override
-    public SpawnGroupData finalizeSpawn(ServerLevelAccessor levelAccessor, DifficultyInstance difficultyInstance, MobSpawnType mobSpawnType, SpawnGroupData spawnGroupData) {
+    public SpawnGroupData finalizeSpawn(ServerLevelAccessor levelAccessor, DifficultyInstance difficultyInstance, EntitySpawnReason mobSpawnType, SpawnGroupData spawnGroupData) {
         spawnGroupData = super.finalizeSpawn(levelAccessor, difficultyInstance, mobSpawnType, spawnGroupData);
-        if (mobSpawnType.equals(MobSpawnType.SPAWNER) && ((AgeableMobGroupData) spawnGroupData).getGroupSize() >= 2 && this.random.nextFloat() <= 0.4F) {
+        if (mobSpawnType.equals(EntitySpawnReason.SPAWNER) && ((AgeableMobGroupData) spawnGroupData).getGroupSize() >= 2 && this.random.nextFloat() <= 0.4F) {
             for (int i = 0; i < this.random.nextInt(1, 3); i++) {
-                RedPandaEntity baby = CACEntities.RED_PANDA.get().create(this.level());
-                baby.moveTo(this.getX(), this.getY(), this.getZ(), this.getYRot(), 0.0F);
+                RedPandaEntity baby = CACEntities.RED_PANDA.get().create(this.level(), EntitySpawnReason.SPAWNER);
+                baby.snapTo(this.getX(), this.getY(), this.getZ(), this.getYRot(), 0.0F);
                 baby.setBaby(true);
                 levelAccessor.addFreshEntity(baby);
             }
@@ -217,23 +214,23 @@ public class RedPandaEntity extends TamableAnimal implements GeoEntity {
         return spawnGroupData;
     }
 
-    private PlayState predicate(AnimationState<?> event) {
+    private PlayState predicate(AnimationTest<?> event) {
         if (this.isAlert()) {
-            event.getController().setAnimation(RawAnimation.begin().then("angry", Animation.LoopType.PLAY_ONCE));
+            event.controller().setAnimation(RawAnimation.begin().then("angry", LoopType.PLAY_ONCE));
         } else if (this.isInSittingPose()) {
-            event.getController().setAnimation(RawAnimation.begin().thenLoop("sit"));
+            event.controller().setAnimation(RawAnimation.begin().thenLoop("sit"));
         } else if (this.isSleeping()) {
-            event.getController().setAnimation(RawAnimation.begin().thenLoop("sleeping"));
+            event.controller().setAnimation(RawAnimation.begin().thenLoop("sleeping"));
         } else if (isInWater()) {
-            event.getController().setAnimation(RawAnimation.begin().thenLoop("swim"));
+            event.controller().setAnimation(RawAnimation.begin().thenLoop("swim"));
         } else if (event.isMoving()) {
             if (getDeltaMovement().length() >= 0.16F) {
-                event.getController().setAnimation(RawAnimation.begin().thenLoop("run"));
+                event.controller().setAnimation(RawAnimation.begin().thenLoop("run"));
             } else {
-                event.getController().setAnimation(RawAnimation.begin().thenLoop("walk"));
+                event.controller().setAnimation(RawAnimation.begin().thenLoop("walk"));
             }
         } else {
-            event.getController().setAnimation(RawAnimation.begin().thenLoop("idle"));
+            event.controller().setAnimation(RawAnimation.begin().thenLoop("idle"));
         }
         return PlayState.CONTINUE;
     }
@@ -241,7 +238,7 @@ public class RedPandaEntity extends TamableAnimal implements GeoEntity {
 
     @Override
     public void registerControllers(AnimatableManager.ControllerRegistrar controllers) {
-        controllers.add(new AnimationController<>(this, "controller", 3, this::predicate));
+        controllers.add(new AnimationController<>("controller", 3, this::predicate));
     }
 
     @Override
@@ -263,6 +260,10 @@ public class RedPandaEntity extends TamableAnimal implements GeoEntity {
 
     protected void setAlert(boolean alert) {
         this.entityData.set(ALERT, alert);
+    }
+
+    private Ingredient ingredient(TagKey<Item> tag) {
+        return Ingredient.of(this.registryAccess().lookupOrThrow(Registries.ITEM).getOrThrow(tag));
     }
 
     static class RedPandaMoveControl extends MoveControl {
@@ -308,7 +309,7 @@ public class RedPandaEntity extends TamableAnimal implements GeoEntity {
                 --this.countdown;
                 return false;
             } else {
-                return RedPandaEntity.this.level().isDay();
+                return RedPandaEntity.this.level().isBrightOutside();
             }
         }
 
@@ -338,7 +339,21 @@ public class RedPandaEntity extends TamableAnimal implements GeoEntity {
             if (!RedPandaEntity.this.isSleeping() && !RedPandaEntity.this.isInWater()) {
                 List<LivingEntity> nearAlerters = RedPandaEntity.this.level().getEntitiesOfClass(LivingEntity.class, RedPandaEntity.this.getBoundingBox().inflate(4.0D),
                         (livingEntity) -> RedPandaEntity.this.isTame() ? SCAREABLES.contains(livingEntity.getType()) && ((Mob) livingEntity).isAggressive() : livingEntity instanceof Player);
-                LivingEntity nearestAlerter = RedPandaEntity.this.level().getNearestEntity(nearAlerters, TargetingConditions.forNonCombat().range(4.0D), RedPandaEntity.this, RedPandaEntity.this.getX(), RedPandaEntity.this.getY(), RedPandaEntity.this.getZ());
+                LivingEntity nearestAlerter = null;
+                double nearestDistance = Double.MAX_VALUE;
+                if (RedPandaEntity.this.level() instanceof ServerLevel serverLevel) {
+                    TargetingConditions conditions = TargetingConditions.forNonCombat().range(4.0D);
+                    for (LivingEntity candidate : nearAlerters) {
+                        if (!conditions.test(serverLevel, RedPandaEntity.this, candidate)) {
+                            continue;
+                        }
+                        double distance = candidate.distanceToSqr(RedPandaEntity.this);
+                        if (distance < nearestDistance) {
+                            nearestAlerter = candidate;
+                            nearestDistance = distance;
+                        }
+                    }
+                }
 
                 if (nearestAlerter != RedPandaEntity.this.alerter) {
                     RedPandaEntity.this.alerter = nearestAlerter;

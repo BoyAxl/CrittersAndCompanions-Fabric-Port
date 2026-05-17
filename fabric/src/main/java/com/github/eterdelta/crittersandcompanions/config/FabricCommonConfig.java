@@ -17,7 +17,7 @@ public class FabricCommonConfig extends CACCommonConfig {
     private final Map<ResourceKey<? extends EntityType<?>>, Supplier<CACWorldGen.SpawnValues>> spawnValues = new HashMap<>();
 
     private void registerSpawns(ModConfigSpec.Builder builder, ResourceKey<? extends EntityType<?>> key, CACWorldGen.SpawnValues defaultValues) {
-        builder.push(key.location().getPath());
+        builder.push(key.identifier().getPath());
 
         var weight = builder.defineInRange("weight", defaultValues.weight(), 0, 128);
         var min = builder.defineInRange("min", defaultValues.min(), 1, 128);
