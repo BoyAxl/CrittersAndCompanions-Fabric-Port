@@ -1,7 +1,7 @@
 # Critters and Companions - Fabric 26.1.2 Port
 
 <p align="center">
-  <img src="common/src/main/resources/logo.png" alt="Critters and Companions official logo" width="260">
+  <img src="docs/assets/title.png" alt="Critters and Companions official title artwork" width="540">
 </p>
 
 This repository contains an unofficial Fabric port of **Critters and Companions** for:
