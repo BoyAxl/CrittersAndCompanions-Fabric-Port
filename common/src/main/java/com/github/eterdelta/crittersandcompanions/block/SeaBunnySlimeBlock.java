@@ -34,7 +34,6 @@ public class SeaBunnySlimeBlock extends HalfTransparentBlock {
         entity.resetFallDistance();
     }
 
-    // Used by forge see IForgeBlock
     public boolean isStickyBlock(BlockState state) {
         return true;
     }

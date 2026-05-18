@@ -19,8 +19,6 @@ import net.minecraft.world.level.storage.loot.providers.number.ConstantValue;
 public class CACLootModifiers {
 
     public static void register() {
-        // should always reflect the values in crittersandcompanions/loot_modifiers/..
-
         addEntriesTo(BuiltInLootTables.FISHING_FISH, 0, builder -> {
             builder.accept(10, CACItems.CLAM.get());
             builder.accept(5, CACItems.KOI_FISH.get());

@@ -20,8 +20,6 @@ import net.minecraft.world.level.levelgen.GenerationStep;
 public class CACWorldGen {
 
     public static void register() {
-        // should always reflect the values in neoforge/biome_modifiers/..
-
         addSpawnsTo(BiomeTags.IS_JUNGLE, CACEntities.LEAF_INSECT);
         addSpawnsTo(BiomeTags.IS_JUNGLE, CACEntities.RED_PANDA);
         addSpawnsTo(BiomeTags.IS_JUNGLE, CACEntities.JUMPING_SPIDER);
