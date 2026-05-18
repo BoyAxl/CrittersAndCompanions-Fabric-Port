@@ -4,20 +4,23 @@ import com.github.eterdelta.crittersandcompanions.CrittersAndCompanions;
 import com.github.eterdelta.crittersandcompanions.api.CACColors;
 import com.github.eterdelta.crittersandcompanions.entity.FerretEntity;
 import com.google.common.collect.ImmutableMap;
-import com.mojang.blaze3d.vertex.PoseStack;
-import com.mojang.blaze3d.vertex.VertexConsumer;
 import java.util.Map;
-import net.minecraft.client.renderer.MultiBufferSource;
-import net.minecraft.client.renderer.rendertype.RenderType;
+import net.minecraft.client.renderer.SubmitNodeCollector;
+import net.minecraft.client.renderer.entity.state.EntityRenderState;
+import net.minecraft.client.renderer.rendertype.RenderTypes;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.DyeColor;
 import org.jetbrains.annotations.Nullable;
-import com.geckolib.cache.model.BakedGeoModel;
-import com.geckolib.renderer.GeoRenderer;
+import com.geckolib.constant.DataTickets;
+import com.geckolib.constant.dataticket.DataTicket;
+import com.geckolib.renderer.base.GeoRenderer;
+import com.geckolib.renderer.base.RenderPassInfo;
 import com.geckolib.renderer.layer.GeoRenderLayer;
 
-public class FerretOverlayerLayer extends GeoRenderLayer<FerretEntity> {
+public class FerretOverlayerLayer extends GeoRenderLayer<FerretEntity, Void, EntityRenderState> {
 
+    private static final DataTicket<Boolean> BABY = DataTickets.create("cac_ferret_overlay_baby", Boolean.class);
+    private static final DataTicket<DyeColor> COLLAR_COLOR = DataTickets.create("cac_ferret_overlay_collar_color", DyeColor.class);
     private static final Map<DyeColor, Identifier> TEXTURES = createTextures(false);
     private static final Map<DyeColor, Identifier> BABY_TEXTURES = createTextures(true);
 
@@ -32,26 +35,28 @@ public class FerretOverlayerLayer extends GeoRenderLayer<FerretEntity> {
         return map.build();
     }
 
-    public FerretOverlayerLayer(GeoRenderer<FerretEntity> renderer) {
+    public FerretOverlayerLayer(GeoRenderer<FerretEntity, Void, EntityRenderState> renderer) {
         super(renderer);
     }
 
     @Override
+    public void addRenderData(FerretEntity animatable, Void relatedObject, EntityRenderState renderState, float partialTick) {
+        renderState.addGeckolibData(BABY, animatable.isBaby());
+        renderState.addGeckolibData(COLLAR_COLOR, animatable.getCollarColor());
+    }
+
     @Nullable
-    protected Identifier getTextureResource(FerretEntity animatable) {
-        var color = animatable.getCollarColor();
+    protected Identifier getTextureResource(EntityRenderState renderState) {
+        var color = renderState.getGeckolibData(COLLAR_COLOR);
         if (color == null) return null;
-        var map = animatable.isBaby() ? BABY_TEXTURES : TEXTURES;
+        var map = renderState.getOrDefaultGeckolibData(BABY, false) ? BABY_TEXTURES : TEXTURES;
         return map.get(color);
     }
 
     @Override
-    public void render(PoseStack poseStack, FerretEntity animatable, BakedGeoModel bakedModel, @Nullable RenderType renderType, MultiBufferSource bufferSource, @Nullable VertexConsumer buffer, float partialTick, int packedLight, int packedOverlay) {
-        var texture = getTextureResource(animatable);
+    public void submitRenderTask(RenderPassInfo<EntityRenderState> renderPassInfo, SubmitNodeCollector submitNodeCollector) {
+        var texture = getTextureResource(renderPassInfo.renderState());
         if (texture == null) return;
-        renderType = RenderType.entityCutout(texture);
-        buffer = bufferSource.getBuffer(renderType);
-        var color = getRenderer().getRenderColor(animatable, partialTick, packedLight).argbInt();
-        getRenderer().reRender(bakedModel, poseStack, bufferSource, animatable, renderType, buffer, partialTick, packedLight, packedOverlay, color);
+        getRenderer().submitRenderTasks(renderPassInfo, submitNodeCollector, RenderTypes.entityCutout(texture));
     }
 }

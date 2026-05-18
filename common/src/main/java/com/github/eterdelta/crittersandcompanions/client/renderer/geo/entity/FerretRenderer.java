@@ -10,6 +10,7 @@ public class FerretRenderer extends GeoEntityRenderer<FerretEntity, EntityRender
 
     public FerretRenderer(EntityRendererProvider.Context manager) {
         super(manager, new FerretModel());
+        this.withRenderLayer(new FerretOverlayerLayer(this));
     }
 
 }

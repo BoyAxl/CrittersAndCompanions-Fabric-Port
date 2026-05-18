@@ -24,7 +24,6 @@ sourceSets {
             exclude 'com/github/eterdelta/crittersandcompanions/client/model/GrapplingHookModel.java'
             exclude 'com/github/eterdelta/crittersandcompanions/client/renderer/BubbleLayer.java'
             exclude 'com/github/eterdelta/crittersandcompanions/client/renderer/SilkLeashRenderer.java'
-            exclude 'com/github/eterdelta/crittersandcompanions/client/renderer/geo/entity/FerretOverlayerLayer.java'
             exclude 'com/github/eterdelta/crittersandcompanions/compat/TrinketsCompat.java'
             exclude 'com/github/eterdelta/crittersandcompanions/mixin/ItemPropertiesAccessor.java'
             exclude 'com/github/eterdelta/crittersandcompanions/mixin/LivingEntityRendererMixin.java'
