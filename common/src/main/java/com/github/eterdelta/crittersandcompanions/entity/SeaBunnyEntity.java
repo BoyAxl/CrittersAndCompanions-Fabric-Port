@@ -3,6 +3,7 @@ package com.github.eterdelta.crittersandcompanions.entity;
 import com.github.eterdelta.crittersandcompanions.registry.CACItems;
 import com.github.eterdelta.crittersandcompanions.registry.CACSounds;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.syncher.EntityDataAccessor;
@@ -35,6 +36,7 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.component.CustomData;
+import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.ServerLevelAccessor;
 import net.minecraft.world.level.storage.ValueInput;
@@ -64,6 +66,14 @@ public class SeaBunnyEntity extends WaterAnimal implements Bucketable, GeoEntity
 
     public static AttributeSupplier.Builder createAttributes() {
         return Mob.createMobAttributes().add(Attributes.MAX_HEALTH, 8.0D).add(Attributes.MOVEMENT_SPEED, 0.08D);
+    }
+
+    private static boolean hasSeaFloorSupport(BlockGetter level, BlockPos floorPos) {
+        return level.getBlockState(floorPos).isFaceSturdy(level, floorPos, Direction.UP);
+    }
+
+    private boolean hasSeaFloorSupport() {
+        return hasSeaFloorSupport(this.level(), this.getOnPos());
     }
 
     @Override
@@ -222,7 +232,9 @@ public class SeaBunnyEntity extends WaterAnimal implements Bucketable, GeoEntity
     }
 
     private PlayState predicate(AnimationTest<?> event) {
-        if (this.getSpeed() > 0.03F) {
+        if (this.isInWater() && !this.hasSeaFloorSupport()) {
+            event.controller().setAnimation(RawAnimation.begin().thenLoop("sea_bunny"));
+        } else if (this.getSpeed() > 0.03F) {
             event.controller().setAnimation(RawAnimation.begin().thenLoop("sea_bunny_move"));
         } else {
             event.controller().setAnimation(RawAnimation.begin().thenLoop("sea_bunny"));
@@ -257,12 +269,21 @@ public class SeaBunnyEntity extends WaterAnimal implements Bucketable, GeoEntity
     }
 
     static class SeaBunnyMoveControl extends MoveControl {
+        private final SeaBunnyEntity seaBunny;
+
         public SeaBunnyMoveControl(SeaBunnyEntity seaBunny) {
             super(seaBunny);
+            this.seaBunny = seaBunny;
         }
 
         @Override
         public void tick() {
+            if (this.seaBunny.isInWater() && !this.seaBunny.hasSeaFloorSupport()) {
+                this.seaBunny.setSpeed(0.0F);
+                this.seaBunny.setXRot(this.rotlerp(this.seaBunny.getXRot(), 0.0F, 10.0F));
+                return;
+            }
+
             if (this.operation == Operation.MOVE_TO && !this.mob.getNavigation().isDone()) {
                 double d0 = this.wantedX - this.mob.getX();
                 double d2 = this.wantedZ - this.mob.getZ();
@@ -301,7 +322,8 @@ public class SeaBunnyEntity extends WaterAnimal implements Bucketable, GeoEntity
                 BlockPos dirPos = RandomPos.generateRandomDirection(this.mob.getRandom(), 2, 2);
                 BlockPos dirRandomPos = RandomPos.generateRandomPosTowardDirection(this.mob, 2, this.mob.getRandom(), dirPos);
                 BlockPos finalPos = RandomPos.moveUpOutOfSolid(dirRandomPos, this.mob.level().getMaxY(), (blockPos) -> GoalUtils.isSolid(this.mob, blockPos));
-                return this.mob.level().getBlockState(finalPos).getFluidState().isEmpty() ? null : finalPos;
+                if (this.mob.level().getBlockState(finalPos).getFluidState().isEmpty()) return null;
+                return SeaBunnyEntity.hasSeaFloorSupport(this.mob.level(), finalPos.below()) ? finalPos : null;
             });
             return randomPos;
         }
