@@ -50,6 +50,14 @@ repositories {
         }
     }
 
+    maven {
+        name = 'CurseMaven'
+        url = 'https://cursemaven.com'
+        content {
+            includeGroup 'curse.maven'
+        }
+    }
+
     mavenCentral()
 }
 
@@ -59,7 +67,7 @@ dependencies {
     implementation "net.fabricmc.fabric-api:fabric-api:${fabric_api_version}"
     implementation "fuzs.forgeconfigapiport:forgeconfigapiport-fabric:${forge_config_port_version}"
     include "fuzs.forgeconfigapiport:forgeconfigapiport-fabric:${forge_config_port_version}"
-    implementation files('reference/GeckoLib 26.1.2 5.5.1.jar')
+    implementation "curse.maven:geckolib-388172:${geckolib_curseforge_file_id}"
 }
 
 tasks.named('processResources', ProcessResources).configure {
