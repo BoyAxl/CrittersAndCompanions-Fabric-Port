@@ -77,6 +77,9 @@ import com.geckolib.util.GeckoLibUtil;
 public class OtterEntity extends Animal implements GeoEntity {
     private static final EntityDataAccessor<Boolean> FLOATING = SynchedEntityData.defineId(OtterEntity.class, EntityDataSerializers.BOOLEAN);
     private static final EntityDataAccessor<Boolean> EATING = SynchedEntityData.defineId(OtterEntity.class, EntityDataSerializers.BOOLEAN);
+    private static final RawAnimation FLOATING_EAT_ANIMATION = RawAnimation.begin().then("floating_eat", LoopType.PLAY_ONCE);
+    private static final int SHORT_EAT_DELAY = 12;
+    private static final int FLOATING_EAT_DELAY = 45;
     private final AnimatableInstanceCache cache = GeckoLibUtil.createInstanceCache(this);
 
     private static final TagKey<Item> FOODS_TAG = TagKey.create(Registries.ITEM, CrittersAndCompanions.createId("otter_food"));
@@ -114,7 +117,7 @@ public class OtterEntity extends Animal implements GeoEntity {
     @Override
     protected void registerGoals() {
         this.goalSelector.addGoal(0, new OtterPanicGoal(this, 1.6F));
-        this.goalSelector.addGoal(1, new AvoidEntityGoal<>(this, Player.class, 32.0F, 0.9D, 1.5D, (livingEntity -> livingEntity.equals(this.getLastHurtMob()))));
+        this.goalSelector.addGoal(1, new AvoidEntityGoal<>(this, Player.class, 32.0F, 0.9D, 1.5D, (livingEntity -> livingEntity.equals(this.getLastHurtByMob()))));
         this.goalSelector.addGoal(2, new MeleeAttackGoal(this, 1.2D, true));
         this.goalSelector.addGoal(3, new GoToSurfaceGoal(60));
         this.goalSelector.addGoal(4, new BreedGoal(this));
@@ -289,6 +292,18 @@ public class OtterEntity extends Animal implements GeoEntity {
         this.setDeltaMovement(this.getDeltaMovement().add(0.0D, (double) 0.08F * this.getAttribute(Services.PLATFORM.getSwimSpeedAttribute()).getValue(), 0.0D));
     }
 
+    @Override
+    protected void actuallyHurt(ServerLevel serverLevel, DamageSource damageSource, float amount) {
+        if (this.isFloating()) {
+            this.floatTime = 0;
+            this.setFloating(false);
+            this.setEating(false);
+            this.eatDelay = 0;
+        }
+
+        super.actuallyHurt(serverLevel, damageSource, amount);
+    }
+
 
     @Override
     public void travel(Vec3 speed) {
@@ -305,12 +320,46 @@ public class OtterEntity extends Animal implements GeoEntity {
     @Override
     public InteractionResult mobInteract(Player player, InteractionHand interactionHand) {
         ItemStack handStack = player.getItemInHand(interactionHand);
-        if (!this.isEating() && this.isFood(handStack)) {
-            this.setItemInHand(InteractionHand.MAIN_HAND, handStack.split(1));
-            handStack.shrink(1);
-            return super.mobInteract(player, interactionHand);
+
+        if (handStack.is(CACItems.CLAM.get())) {
+            if (!this.isEating() && this.getMainHandItem().isEmpty()) {
+                this.takeFoodFromPlayer(player, handStack);
+                return InteractionResult.SUCCESS;
+            }
+            return InteractionResult.PASS;
         }
+
+        if (this.isFood(handStack)) {
+            if (this.isBaby()) {
+                if (!this.isEating() && this.getMainHandItem().isEmpty()) {
+                    this.takeFoodFromPlayer(player, handStack);
+                    if (!this.level().isClientSide() && this.canAgeUp()) {
+                        this.ageUp(Animal.getSpeedUpSecondsWhenFeeding(-this.getAge()), true);
+                    }
+                    return InteractionResult.SUCCESS;
+                }
+                return InteractionResult.PASS;
+            }
+
+            if (!this.isEating() && this.getMainHandItem().isEmpty() && this.getAge() == 0 && this.canFallInLove()) {
+                this.takeFoodFromPlayer(player, handStack);
+                if (!this.level().isClientSide()) {
+                    this.setInLove(player);
+                }
+                return InteractionResult.SUCCESS;
+            }
+
+            return InteractionResult.PASS;
+        }
+
         return InteractionResult.PASS;
+    }
+
+    private void takeFoodFromPlayer(Player player, ItemStack handStack) {
+        this.setItemInHand(InteractionHand.MAIN_HAND, handStack.copyWithCount(1));
+        if (!player.getAbilities().instabuild) {
+            handStack.shrink(1);
+        }
     }
 
     @Override
@@ -326,6 +375,11 @@ public class OtterEntity extends Animal implements GeoEntity {
     @Override
     public boolean canBreed() {
         return !this.isBaby();
+    }
+
+    @Override
+    public float getAgeScale() {
+        return this.isBaby() ? 0.6F : 1.0F;
     }
 
     @Override
@@ -413,7 +467,7 @@ public class OtterEntity extends Animal implements GeoEntity {
 
     private PlayState floatingHandsPredicate(AnimationTest<?> event) {
         if (isFloating() && isEating()) {
-            event.controller().setAnimation(RawAnimation.begin().then("floating_eat", LoopType.PLAY_ONCE));
+            event.controller().setAnimation(FLOATING_EAT_ANIMATION);
             return PlayState.CONTINUE;
         }
         event.controller().reset();
@@ -461,12 +515,16 @@ public class OtterEntity extends Animal implements GeoEntity {
 
     private void startEating() {
         if (this.isFood(this.getMainHandItem())) {
-            this.eatDelay = this.getMainHandItem().is(CACItems.CLAM.get()) ? 45 : 12;
+            this.eatDelay = this.getEatDelay(this.getMainHandItem());
             this.setEating(true);
             if (breakingClamOnLand()) {
                 playSound(CACSounds.OTTER_CLAM_BREAK_LAND.get(), 1.2F, 1.0F);
             }
         }
+    }
+
+    private int getEatDelay(ItemStack itemStack) {
+        return itemStack.is(CACItems.CLAM.get()) || this.isFloating() ? FLOATING_EAT_DELAY : SHORT_EAT_DELAY;
     }
 
     private void startFloating(int time) {
