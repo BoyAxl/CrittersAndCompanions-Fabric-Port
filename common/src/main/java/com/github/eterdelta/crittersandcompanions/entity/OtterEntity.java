@@ -10,7 +10,6 @@ import com.github.eterdelta.crittersandcompanions.registry.CACSounds;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -83,7 +82,14 @@ import com.geckolib.util.GeckoLibUtil;
 public class OtterEntity extends Animal implements GeoEntity {
     private static final EntityDataAccessor<Boolean> FLOATING = SynchedEntityData.defineId(OtterEntity.class, EntityDataSerializers.BOOLEAN);
     private static final EntityDataAccessor<Boolean> EATING = SynchedEntityData.defineId(OtterEntity.class, EntityDataSerializers.BOOLEAN);
+    private static final RawAnimation FLOATING_ANIMATION = RawAnimation.begin().thenLoop("swim_2");
     private static final RawAnimation FLOATING_EAT_ANIMATION = RawAnimation.begin().then("floating_eat", LoopType.PLAY_ONCE);
+    private static final RawAnimation STANDING_EAT_CLAM_ANIMATION = RawAnimation.begin().then("standing_eat_clam", LoopType.PLAY_ONCE);
+    private static final RawAnimation STANDING_EAT_ANIMATION = RawAnimation.begin().then("standing_eat", LoopType.PLAY_ONCE);
+    private static final RawAnimation SWIM_ANIMATION = RawAnimation.begin().thenLoop("swim");
+    private static final RawAnimation RUN_ANIMATION = RawAnimation.begin().thenLoop("run");
+    private static final RawAnimation WALK_ANIMATION = RawAnimation.begin().thenLoop("walk");
+    private static final RawAnimation IDLE_ANIMATION = RawAnimation.begin().thenLoop("idle");
     private static final int SHORT_EAT_DELAY = 12;
     private static final int FLOATING_EAT_DELAY = 45;
     private static final float BABY_SCALE = 0.8F;
@@ -106,6 +112,8 @@ public class OtterEntity extends Animal implements GeoEntity {
     private static final float SURFACE_SWIM_MIN_X_ROT = -10.0F;
     private static final float SURFACE_SWIM_MAX_X_ROT = 0.0F;
     private static final int REJECTED_FOOD_PICKUP_COOLDOWN = 200;
+    private static final double SEARCH_FOOD_RANGE = 8.0D;
+    private static final int SEARCH_FOOD_PATH_RECALC_INTERVAL = 5;
     private static final int OTTER_MAX_AIR_SUPPLY = 2400;
     private final AnimatableInstanceCache cache = GeckoLibUtil.createInstanceCache(this);
 
@@ -269,6 +277,9 @@ public class OtterEntity extends Animal implements GeoEntity {
 
             if (this.rejectedFoodPickupCooldown > 0) {
                 --this.rejectedFoodPickupCooldown;
+                if (this.rejectedFoodPickupCooldown == 0) {
+                    this.rejectedFoodItems.clear();
+                }
             }
         }
     }
@@ -516,30 +527,30 @@ public class OtterEntity extends Animal implements GeoEntity {
 
     private RawAnimation animation(AnimationTest<?> event) {
         if (isFloating()) {
-            return RawAnimation.begin().thenLoop("swim_2");
+            return FLOATING_ANIMATION;
         }
 
         if (isEating()) {
             if (getMainHandItem().is(CACItems.CLAM.get())) {
-                return RawAnimation.begin().then("standing_eat_clam", LoopType.PLAY_ONCE);
+                return STANDING_EAT_CLAM_ANIMATION;
             }
 
-            return RawAnimation.begin().then("standing_eat", LoopType.PLAY_ONCE);
+            return STANDING_EAT_ANIMATION;
         }
 
         if (isInWater()) {
-            return RawAnimation.begin().thenLoop("swim");
+            return SWIM_ANIMATION;
         }
 
         if (event.isMoving()) {
             if (getDeltaMovement().length() >= 0.18F) {
-                return RawAnimation.begin().thenLoop("run");
+                return RUN_ANIMATION;
             } else {
-                return RawAnimation.begin().thenLoop("walk");
+                return WALK_ANIMATION;
             }
         }
 
-        return RawAnimation.begin().thenLoop("idle");
+        return IDLE_ANIMATION;
     }
 
     private PlayState predicate(AnimationTest<?> event) {
@@ -832,12 +843,6 @@ public class OtterEntity extends Animal implements GeoEntity {
         }
 
         return new SurfaceTarget(target, path, path.canReach());
-    }
-
-    private double findWaterSurfaceYAbove() {
-        int startY = Mth.floor(this.getY()) - WATER_SURFACE_BELOW_RANGE;
-        int endY = Mth.floor(this.getY()) + WATER_SURFACE_SEARCH_RANGE;
-        return this.findWaterSurfaceY(Mth.floor(this.getX()), Mth.floor(this.getZ()), startY, endY);
     }
 
     private double findWaterSurfaceYNearBody() {
@@ -1143,7 +1148,6 @@ public class OtterEntity extends Animal implements GeoEntity {
 
     public class GoToSurfaceGoal extends Goal {
         private final int timeoutTime;
-        private boolean goingLand;
         private Vec3 targetPos;
         private Path targetPath;
         private int timeoutTimer;
@@ -1197,8 +1201,7 @@ public class OtterEntity extends Animal implements GeoEntity {
 
         @Override
         public void tick() {
-            // Embed goals sometimes computee client sided ticks due to a sync error, although this happens in singleplayer
-            // it's better to encapsulate the method
+            // Embedded goals can sometimes tick client-side in singleplayer, so keep this guarded.
             if (OtterEntity.this.level().isClientSide()) {
                 return;
             }
@@ -1374,6 +1377,9 @@ public class OtterEntity extends Animal implements GeoEntity {
     }
 
     public class SearchFoodGoal extends Goal {
+        private ItemEntity targetFood;
+        private int timeToRecalcPath;
+
         public SearchFoodGoal() {
             this.setFlags(EnumSet.of(Flag.MOVE, Flag.LOOK));
         }
@@ -1382,27 +1388,48 @@ public class OtterEntity extends Animal implements GeoEntity {
         public boolean canUse() {
             if (!OtterEntity.this.getMainHandItem().isEmpty()) {
                 return false;
-            } else {
-                List<ItemEntity> itemsInRadius = OtterEntity.this.level().getEntitiesOfClass(ItemEntity.class, OtterEntity.this.getBoundingBox().inflate(8.0D, 8.0D, 8.0D), OtterEntity.this::canPickUpFood);
-                return !itemsInRadius.isEmpty();
             }
+
+            this.targetFood = this.findFood();
+            return this.targetFood != null;
+        }
+
+        @Override
+        public boolean canContinueToUse() {
+            return this.targetFood != null
+                    && this.targetFood.isAlive()
+                    && OtterEntity.this.getMainHandItem().isEmpty()
+                    && OtterEntity.this.canPickUpFood(this.targetFood);
         }
 
         @Override
         public void tick() {
-            List<ItemEntity> itemsInRadius = OtterEntity.this.level().getEntitiesOfClass(ItemEntity.class, OtterEntity.this.getBoundingBox().inflate(8.0D, 8.0D, 8.0D), OtterEntity.this::canPickUpFood);
-            ItemStack handStack = OtterEntity.this.getMainHandItem();
-            if (handStack.isEmpty() && !itemsInRadius.isEmpty()) {
-                Path path = OtterEntity.this.getNavigation().createPath(itemsInRadius.get(0), 0);
-                OtterEntity.this.getNavigation().moveTo(path, 1.0D);
+            if (--this.timeToRecalcPath <= 0) {
+                this.timeToRecalcPath = this.adjustedTickDelay(SEARCH_FOOD_PATH_RECALC_INTERVAL);
+                this.moveToFood();
             }
         }
 
         @Override
         public void start() {
-            List<ItemEntity> itemsInRadius = OtterEntity.this.level().getEntitiesOfClass(ItemEntity.class, OtterEntity.this.getBoundingBox().inflate(8.0D, 8.0D, 8.0D), OtterEntity.this::canPickUpFood);
-            if (!itemsInRadius.isEmpty()) {
-                Path path = OtterEntity.this.getNavigation().createPath(itemsInRadius.get(0), 0);
+            this.timeToRecalcPath = 0;
+            this.moveToFood();
+        }
+
+        @Override
+        public void stop() {
+            this.targetFood = null;
+            this.timeToRecalcPath = 0;
+        }
+
+        private ItemEntity findFood() {
+            var itemsInRadius = OtterEntity.this.level().getEntitiesOfClass(ItemEntity.class, OtterEntity.this.getBoundingBox().inflate(SEARCH_FOOD_RANGE), OtterEntity.this::canPickUpFood);
+            return itemsInRadius.isEmpty() ? null : itemsInRadius.get(0);
+        }
+
+        private void moveToFood() {
+            if (this.targetFood != null) {
+                Path path = OtterEntity.this.getNavigation().createPath(this.targetFood, 0);
                 OtterEntity.this.getNavigation().moveTo(path, 1.0D);
             }
         }

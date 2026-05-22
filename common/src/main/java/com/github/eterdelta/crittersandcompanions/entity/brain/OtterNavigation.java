@@ -48,9 +48,10 @@ public class OtterNavigation extends AmphibiousPathNavigation {
     private static final double WATER_EXIT_MAX_HORIZONTAL_SPEED = 0.22D;
     private static final double WATER_EXIT_UPWARD_SPEED = 0.11D;
     private static final double WATER_EXIT_COLLISION_UPWARD_SPEED = 0.18D;
+    private static final int PATHFINDING_CACHE_SIZE = 4096;
 
     private final Cache<BlockPos, Boolean> cache = CacheBuilder.newBuilder()
-            .maximumSize(12000)
+            .maximumSize(PATHFINDING_CACHE_SIZE)
             .expireAfterAccess(5, TimeUnit.SECONDS)
             .build();
 
@@ -61,8 +62,6 @@ public class OtterNavigation extends AmphibiousPathNavigation {
     private int surfacePathStuckTicks = 0;
     private double lastSurfacePathDist = Double.MAX_VALUE;
     private double lastSurfacePathHorizontalDist = Double.MAX_VALUE;
-    private double lastSurfacePathMobX = Double.NaN;
-    private double lastSurfacePathMobZ = Double.NaN;
     private int lastSurfacePathNodeIndex = -1;
     private double surfacePathStartY = Double.NaN;
     private boolean surfacePathMode = false;
@@ -89,8 +88,6 @@ public class OtterNavigation extends AmphibiousPathNavigation {
         this.surfacePathStuckTicks = 0;
         this.lastSurfacePathDist = Double.MAX_VALUE;
         this.lastSurfacePathHorizontalDist = Double.MAX_VALUE;
-        this.lastSurfacePathMobX = Double.NaN;
-        this.lastSurfacePathMobZ = Double.NaN;
         this.lastSurfacePathNodeIndex = -1;
         this.surfacePathStartY = Double.NaN;
         this.surfacePathMode = false;
@@ -156,9 +153,6 @@ public class OtterNavigation extends AmphibiousPathNavigation {
         double progressDist = dx * dx + dy * dy + dz * dz;
         double horizontalDist = dx * dx + dz * dz;
         double finalDist = finalDx * finalDx + finalDy * finalDy + finalDz * finalDz;
-        double mobHorizontalMove = Double.isNaN(this.lastSurfacePathMobX) || Double.isNaN(this.lastSurfacePathMobZ)
-                ? Double.MAX_VALUE
-                : this.mob.distanceToSqr(this.lastSurfacePathMobX, this.mob.getY(), this.lastSurfacePathMobZ);
 
         if (path != null) {
             int pathNodeIndex = path.getNextNodeIndex();
@@ -180,9 +174,7 @@ public class OtterNavigation extends AmphibiousPathNavigation {
 
         this.lastSurfacePathDist = progressDist;
         this.lastSurfacePathHorizontalDist = horizontalDist;
-        this.lastSurfacePathMobX = this.mob.getX();
-        this.lastSurfacePathMobZ = this.mob.getZ();
-        return new SurfacePathProgress(progressDist, horizontalDist, finalDist, mobHorizontalMove, this.surfacePathStuckTicks);
+        return new SurfacePathProgress(progressDist, horizontalDist, finalDist, this.surfacePathStuckTicks);
     }
 
     public void applySurfaceMovementAssist(Vec3 wantedPosition, double travelSpeed) {
@@ -232,8 +224,7 @@ public class OtterNavigation extends AmphibiousPathNavigation {
     }
 
     /**
-     * Core loop for following the current path. Attempts shortcuts, moves towards the next node and handles
-     * the entity jumping (the latter killed me ngl)
+     * Core loop for following the current path. Attempts shortcuts, moves toward the next node, and handles jumping.
      */
     @Override
     protected void followThePath() {
@@ -280,7 +271,7 @@ public class OtterNavigation extends AmphibiousPathNavigation {
         }
 
         if (!this.mob.isInWater() && this.mob.onGround() && this.mob.horizontalCollision && jumpCooldown == 0) {
-            // The dir towards the node (not usin getDirection as it can 'lie' depending on the azimuth of the entity)
+            // Direction toward the node. getDirection can disagree with the actual path heading.
             Vec3 dir = new Vec3(target.x - this.mob.getX(), 0.0, target.z - this.mob.getZ());
             if (dir.lengthSqr() > 1.0E-4) dir = dir.normalize();
 
@@ -292,7 +283,7 @@ public class OtterNavigation extends AmphibiousPathNavigation {
             VoxelShape shape =  this.level.getBlockState(front).getCollisionShape(this.level, front);
             double h = shape.isEmpty() ? 0.0D : shape.max(Direction.Axis.Y);
 
-            // How much free space aboce the entity (two blocks max)
+            // How much free space is above the entity.
             BlockPos head = front.above();
             boolean headClear = this.level.getBlockState(head).getCollisionShape(this.level, head).isEmpty();
             boolean head2Clear = this.level.getBlockState(head.above()).getCollisionShape(this.level, head.above()).isEmpty();
@@ -302,8 +293,8 @@ public class OtterNavigation extends AmphibiousPathNavigation {
                 this.mob.getJumpControl().jump();
                 jumpCooldown = 6;
             } else {
-                // Fallback for small perpen sidestep, so it goes around the tight corners
-                perpendicularSideS(dir);
+                // Fallback sidestep, so it can go around tight corners.
+                tryPerpendicularSidestep(dir);
             }
 
         }
@@ -367,7 +358,7 @@ public class OtterNavigation extends AmphibiousPathNavigation {
                         dir = dir.normalize();
                     }
 
-                    perpendicularSideS(dir);
+                    tryPerpendicularSidestep(dir);
                     this.stuckReplans = 0;
                 }
 
@@ -454,12 +445,11 @@ public class OtterNavigation extends AmphibiousPathNavigation {
     private boolean isLandExitTarget(BlockPos pos) {
         BlockState blockState = this.level.getBlockState(pos);
         BlockState aboveState = this.level.getBlockState(pos.above());
-        BlockState belowState = this.level.getBlockState(pos.below());
         return this.level.getFluidState(pos).isEmpty()
                 && this.level.getFluidState(pos.below()).isEmpty()
                 && blockState.getCollisionShape(this.level, pos).isEmpty()
                 && aboveState.getCollisionShape(this.level, pos.above()).isEmpty()
-                && !belowState.getCollisionShape(this.level, pos.below()).isEmpty();
+                && this.hasCollisionBelow(pos);
     }
 
     private boolean hasReached(Path path, float threshold) {
@@ -601,7 +591,7 @@ public class OtterNavigation extends AmphibiousPathNavigation {
             if (!isPathfindable)
                 return false;
 
-            // Also rejects if the block's path type is not okie dokie
+            // Also rejects dangerous or blocked path types.
             var pathType = this.nodeEvaluator.getPathType(this.mob, pos);
             float malus = this.mob.getPathfindingMalus(pathType);
 
@@ -621,9 +611,9 @@ public class OtterNavigation extends AmphibiousPathNavigation {
                 && (this.level.getFluidState(pos).is(FluidTags.WATER) || blockState.isAir());
     }
 
-    private void perpendicularSideS(Vec3 dirNorm) {
-        double px = -dirNorm.z; // perpen
-        double pz = dirNorm.x; // perpen
+    private void tryPerpendicularSidestep(Vec3 dirNorm) {
+        double px = -dirNorm.z;
+        double pz = dirNorm.x;
         double side = this.mob.getRandom().nextBoolean() ? 1.0D : -1.0D;
 
         Vec3 curr = this.mob.position();
@@ -668,7 +658,7 @@ public class OtterNavigation extends AmphibiousPathNavigation {
                 if (!(this.level.getFluidState(edge).is(FluidTags.WATER) && this.level.getBlockState(edge.above()).isAir() && this.level.getBlockState(edge.above(2)).isAir())) continue;
 
                 BlockPos land = edge.relative(dir);
-                if (this.level.getBlockState(land).isAir() && this.level.getBlockState(land.below()).isSolid() && this.isStableDestination(land)) {
+                if (this.level.getBlockState(land).isAir() && this.hasCollisionBelow(land) && this.isStableDestination(land)) {
                     this.moveTo(land.getX() + 0.5D, land.getY(), land.getZ() + 0.5D, Math.max(1.0D, this.speedModifier));
                     return true;
                 }
@@ -679,18 +669,21 @@ public class OtterNavigation extends AmphibiousPathNavigation {
         return false;
     }
 
+    private boolean hasCollisionBelow(BlockPos pos) {
+        BlockPos below = pos.below();
+        return !this.level.getBlockState(below).getCollisionShape(this.level, below).isEmpty();
+    }
+
     public static final class SurfacePathProgress {
         private final double progressDist;
         private final double horizontalDist;
         private final double finalDist;
-        private final double mobHorizontalMove;
         private final int stuckTicks;
 
-        private SurfacePathProgress(double progressDist, double horizontalDist, double finalDist, double mobHorizontalMove, int stuckTicks) {
+        private SurfacePathProgress(double progressDist, double horizontalDist, double finalDist, int stuckTicks) {
             this.progressDist = progressDist;
             this.horizontalDist = horizontalDist;
             this.finalDist = finalDist;
-            this.mobHorizontalMove = mobHorizontalMove;
             this.stuckTicks = stuckTicks;
         }
 
@@ -704,10 +697,6 @@ public class OtterNavigation extends AmphibiousPathNavigation {
 
         public double finalDist() {
             return this.finalDist;
-        }
-
-        public double mobHorizontalMove() {
-            return this.mobHorizontalMove;
         }
 
         public int stuckTicks() {
