@@ -1,3 +1,6 @@
 {
-  "parent": "minecraft:item/turtle_spawn_egg"
+  "parent": "minecraft:item/generated",
+  "textures": {
+    "layer0": "crittersandcompanions:item/sea_bunny_spawn_egg"
+  }
 }

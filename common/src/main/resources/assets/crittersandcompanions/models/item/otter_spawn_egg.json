@@ -1,3 +1,6 @@
 {
-  "parent": "minecraft:item/dolphin_spawn_egg"
+  "parent": "minecraft:item/generated",
+  "textures": {
+    "layer0": "crittersandcompanions:item/otter_spawn_egg"
+  }
 }

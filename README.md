@@ -30,6 +30,7 @@ Public credits from the original project page:
 - EterDelta: coding
 - Scratchy: sound effects
 - Lytho_: original Fabric port
+- L2: Modded Omelet resource pack spawn egg textures adapted for this port
 
 The public CurseForge team also lists possible_triangle, Lytho, AlexNijjar, CodexAdrian, EterDelta, and BonsaiStudios Mascot as project members.
 
