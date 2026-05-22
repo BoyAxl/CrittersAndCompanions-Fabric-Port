@@ -8,7 +8,11 @@ import com.github.eterdelta.crittersandcompanions.registry.CACEntities;
 import com.github.eterdelta.crittersandcompanions.registry.CACItems;
 import com.github.eterdelta.crittersandcompanions.registry.CACSounds;
 import java.util.EnumSet;
-import java.util.List;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Vec3i;
 import net.minecraft.core.particles.ItemParticleOption;
@@ -59,6 +63,7 @@ import net.minecraft.world.level.LevelAccessor;
 import net.minecraft.world.level.ServerLevelAccessor;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.material.Fluid;
+import net.minecraft.world.level.material.FluidState;
 import net.minecraft.world.level.pathfinder.Path;
 import net.minecraft.world.level.pathfinder.PathType;
 import net.minecraft.world.level.storage.ValueInput;
@@ -77,6 +82,39 @@ import com.geckolib.util.GeckoLibUtil;
 public class OtterEntity extends Animal implements GeoEntity {
     private static final EntityDataAccessor<Boolean> FLOATING = SynchedEntityData.defineId(OtterEntity.class, EntityDataSerializers.BOOLEAN);
     private static final EntityDataAccessor<Boolean> EATING = SynchedEntityData.defineId(OtterEntity.class, EntityDataSerializers.BOOLEAN);
+    private static final RawAnimation FLOATING_ANIMATION = RawAnimation.begin().thenLoop("swim_2");
+    private static final RawAnimation FLOATING_EAT_ANIMATION = RawAnimation.begin().then("floating_eat", LoopType.PLAY_ONCE);
+    private static final RawAnimation STANDING_EAT_CLAM_ANIMATION = RawAnimation.begin().then("standing_eat_clam", LoopType.PLAY_ONCE);
+    private static final RawAnimation STANDING_EAT_ANIMATION = RawAnimation.begin().then("standing_eat", LoopType.PLAY_ONCE);
+    private static final RawAnimation SWIM_ANIMATION = RawAnimation.begin().thenLoop("swim");
+    private static final RawAnimation RUN_ANIMATION = RawAnimation.begin().thenLoop("run");
+    private static final RawAnimation WALK_ANIMATION = RawAnimation.begin().thenLoop("walk");
+    private static final RawAnimation IDLE_ANIMATION = RawAnimation.begin().thenLoop("idle");
+    private static final int SHORT_EAT_DELAY = 12;
+    private static final int FLOATING_EAT_DELAY = 45;
+    private static final float BABY_SCALE = 0.8F;
+    private static final double FLOATING_SUBMERGED_HEIGHT = 0.5D;
+    private static final int WATER_SURFACE_SEARCH_RANGE = 40;
+    private static final int WATER_SURFACE_HORIZONTAL_RANGE = 32;
+    private static final int FOOD_SURFACE_DYNAMIC_RANGE = 5;
+    private static final int WATER_SURFACE_BELOW_RANGE = 2;
+    private static final int WATER_SURFACE_ABOVE_RANGE = 2;
+    private static final double WATER_SURFACE_NAVIGATION_OFFSET = 0.25D;
+    private static final double FLOATING_SURFACE_TOLERANCE_BELOW = 0.25D;
+    private static final double FLOATING_SURFACE_TOLERANCE_ABOVE = 0.25D;
+    private static final double SURFACE_PATH_SPEED = 1.0D;
+    private static final double SURFACE_DIRECT_SPEED = 0.5D;
+    private static final int SURFACE_DIRECT_STUCK_TICKS = 40;
+    private static final int SURFACE_PATH_STUCK_TICKS = 40;
+    private static final int SURFACE_BAD_TARGET_LIMIT = 6;
+    private static final double SURFACE_FINAL_ASCENT_PUSH = 0.05D;
+    private static final double SURFACE_VERTICAL_ASCENT_HORIZONTAL_DISTANCE = 1.0D;
+    private static final float SURFACE_SWIM_MIN_X_ROT = -10.0F;
+    private static final float SURFACE_SWIM_MAX_X_ROT = 0.0F;
+    private static final int REJECTED_FOOD_PICKUP_COOLDOWN = 200;
+    private static final double SEARCH_FOOD_RANGE = 8.0D;
+    private static final int SEARCH_FOOD_PATH_RECALC_INTERVAL = 5;
+    private static final int OTTER_MAX_AIR_SUPPLY = 2400;
     private final AnimatableInstanceCache cache = GeckoLibUtil.createInstanceCache(this);
 
     private static final TagKey<Item> FOODS_TAG = TagKey.create(Registries.ITEM, CrittersAndCompanions.createId("otter_food"));
@@ -87,6 +125,9 @@ public class OtterEntity extends Animal implements GeoEntity {
     private int huntDelay;
     private int eatDelay;
     private int floatTime;
+    private int rejectedFoodPickupCooldown;
+    private UUID pendingLoveCause;
+    private final Set<UUID> rejectedFoodItems = new HashSet<>();
 
     public OtterEntity(EntityType<? extends OtterEntity> entityType, Level level) {
         super(entityType, level);
@@ -114,8 +155,8 @@ public class OtterEntity extends Animal implements GeoEntity {
     @Override
     protected void registerGoals() {
         this.goalSelector.addGoal(0, new OtterPanicGoal(this, 1.6F));
-        this.goalSelector.addGoal(1, new AvoidEntityGoal<>(this, Player.class, 32.0F, 0.9D, 1.5D, (livingEntity -> livingEntity.equals(this.getLastHurtMob()))));
-        this.goalSelector.addGoal(2, new MeleeAttackGoal(this, 1.2D, true));
+        this.goalSelector.addGoal(1, new AvoidEntityGoal<>(this, Player.class, 32.0F, 0.9D, 1.5D, (livingEntity -> livingEntity.equals(this.getLastHurtByMob()))));
+        this.goalSelector.addGoal(2, new OtterMeleeAttackGoal(this));
         this.goalSelector.addGoal(3, new GoToSurfaceGoal(60));
         this.goalSelector.addGoal(4, new BreedGoal(this));
         this.goalSelector.addGoal(5, new SearchFoodGoal());
@@ -124,7 +165,7 @@ public class OtterEntity extends Animal implements GeoEntity {
         this.goalSelector.addGoal(8, new LookAtPlayerGoal(this));
         this.goalSelector.addGoal(9, new RandomLookAroundGoal(this));
 
-        this.targetSelector.addGoal(1, new NearestAttackableTargetGoal<AbstractFish>(this, AbstractFish.class, 20, false, false, (fish, serverLevel) -> fish instanceof AbstractSchoolingFish && this.getHuntDelay() <= 0));
+        this.targetSelector.addGoal(1, new NearestAttackableTargetGoal<AbstractFish>(this, AbstractFish.class, 20, false, false, (fish, serverLevel) -> fish instanceof AbstractSchoolingFish && this.canHuntFish()));
     }
 
     @Override
@@ -135,6 +176,7 @@ public class OtterEntity extends Animal implements GeoEntity {
         output.putInt("FloatTime", this.floatTime);
         output.putBoolean("Eating", this.isEating());
         output.putInt("EatDelay", this.eatDelay);
+        output.putInt("RejectedFoodPickupCooldown", this.rejectedFoodPickupCooldown);
     }
 
     @Override
@@ -145,6 +187,7 @@ public class OtterEntity extends Animal implements GeoEntity {
         this.floatTime = input.getIntOr("FloatTime", 0);
         this.setEating(input.getBooleanOr("Eating", false));
         this.eatDelay = input.getIntOr("EatDelay", 0);
+        this.rejectedFoodPickupCooldown = input.getIntOr("RejectedFoodPickupCooldown", 0);
     }
 
     @Override
@@ -180,8 +223,7 @@ public class OtterEntity extends Animal implements GeoEntity {
 
         // Forces body local pitch to 0 when out of water
         if (!this.isInWater()) {
-            this.setXRot(0);
-            this.xRotO = 0;
+            this.setBodyPitch(0.0F);
         }
 
     }
@@ -205,6 +247,10 @@ public class OtterEntity extends Animal implements GeoEntity {
             }
 
             var held = getMainHandItem();
+            if (this.getTarget() instanceof AbstractFish && !this.canHuntFish()) {
+                this.setTarget(null);
+            }
+
             if (this.isFood(held)) {
                 if (this.isEating()) {
                     if (this.eatDelay > 0) {
@@ -228,6 +274,13 @@ public class OtterEntity extends Animal implements GeoEntity {
             if (this.huntDelay > 0) {
                 --this.huntDelay;
             }
+
+            if (this.rejectedFoodPickupCooldown > 0) {
+                --this.rejectedFoodPickupCooldown;
+                if (this.rejectedFoodPickupCooldown == 0) {
+                    this.rejectedFoodItems.clear();
+                }
+            }
         }
     }
 
@@ -237,6 +290,7 @@ public class OtterEntity extends Animal implements GeoEntity {
     }
 
     private void breakAndEat(ServerLevel level, ItemStack held) {
+        boolean applyPendingLove = this.isPendingLoveFood(held);
         Vec3 mouthPos = calculateMouthPos();
         level.sendParticles(new ItemParticleOption(ParticleTypes.ITEM, ItemStackTemplate.fromNonEmptyStack(held.copy())), mouthPos.x(), mouthPos.y(), mouthPos.z(), 2, 0.0D, 0.1D, 0.0D, 0.05D);
         var sound = getMainHandItem().is(CACItems.CLAM.get()) && !breakingClamOnLand() ?
@@ -245,6 +299,9 @@ public class OtterEntity extends Animal implements GeoEntity {
         playSound(sound, 1.2F, 1.0F);
         eatOrOpen(level, held);
         setEating(false);
+        if (applyPendingLove) {
+            this.applyPendingLove();
+        }
     }
 
     public ItemStack eatOrOpen(Level level, ItemStack itemStack) {
@@ -279,14 +336,34 @@ public class OtterEntity extends Animal implements GeoEntity {
         return new OtterNavigation(this, level);
     }
 
+    private OtterNavigation otterNavigation() {
+        return (OtterNavigation) this.getNavigation();
+    }
+
     @Override
     public int getMaxAirSupply() {
-        return 9600;
+        return OTTER_MAX_AIR_SUPPLY;
     }
 
     @Override
     protected void jumpInLiquid(TagKey<Fluid> fluidTag) {
         this.setDeltaMovement(this.getDeltaMovement().add(0.0D, (double) 0.08F * this.getAttribute(Services.PLATFORM.getSwimSpeedAttribute()).getValue(), 0.0D));
+    }
+
+    @Override
+    protected void actuallyHurt(ServerLevel serverLevel, DamageSource damageSource, float amount) {
+        if (this.isSurfacingForFood()) {
+            this.cancelFoodInteraction(true);
+        }
+
+        if (this.isFloating()) {
+            this.floatTime = 0;
+            this.setFloating(false);
+            this.setEating(false);
+            this.eatDelay = 0;
+        }
+
+        super.actuallyHurt(serverLevel, damageSource, amount);
     }
 
 
@@ -302,15 +379,80 @@ public class OtterEntity extends Animal implements GeoEntity {
         }
     }
 
+    private void cancelFoodInteraction(boolean dropFood) {
+        if (dropFood && this.isFood(this.getMainHandItem())) {
+            this.rejectedFoodPickupCooldown = REJECTED_FOOD_PICKUP_COOLDOWN;
+            this.rejectFood();
+        }
+
+        this.floatTime = 0;
+        this.eatDelay = 0;
+        this.setFloating(false);
+        this.setEating(false);
+        this.setNeedsSurface(false);
+        this.pendingLoveCause = null;
+        this.getNavigation().stop();
+    }
+
     @Override
     public InteractionResult mobInteract(Player player, InteractionHand interactionHand) {
         ItemStack handStack = player.getItemInHand(interactionHand);
-        if (!this.isEating() && this.isFood(handStack)) {
-            this.setItemInHand(InteractionHand.MAIN_HAND, handStack.split(1));
-            handStack.shrink(1);
-            return super.mobInteract(player, interactionHand);
+
+        if (handStack.is(CACItems.CLAM.get())) {
+            if (!this.isEating() && this.getMainHandItem().isEmpty()) {
+                this.takeFoodFromPlayer(player, handStack);
+                return InteractionResult.SUCCESS;
+            }
+            return InteractionResult.PASS;
         }
+
+        if (this.isFood(handStack)) {
+            if (this.isBaby()) {
+                if (!this.isEating() && this.getMainHandItem().isEmpty()) {
+                    this.takeFoodFromPlayer(player, handStack);
+                    if (!this.level().isClientSide() && this.canAgeUp()) {
+                        this.ageUp(Animal.getSpeedUpSecondsWhenFeeding(-this.getAge()), true);
+                    }
+                    return InteractionResult.SUCCESS;
+                }
+                return InteractionResult.PASS;
+            }
+
+            if (!this.isEating() && this.getMainHandItem().isEmpty() && this.getAge() == 0 && this.canFallInLove()) {
+                this.takeFoodFromPlayer(player, handStack);
+                if (!this.level().isClientSide()) {
+                    this.pendingLoveCause = player.getUUID();
+                }
+                return InteractionResult.SUCCESS;
+            }
+
+            return InteractionResult.PASS;
+        }
+
         return InteractionResult.PASS;
+    }
+
+    private void takeFoodFromPlayer(Player player, ItemStack handStack) {
+        this.setItemInHand(InteractionHand.MAIN_HAND, handStack.copyWithCount(1));
+        if (!player.getAbilities().instabuild) {
+            handStack.shrink(1);
+        }
+    }
+
+    private boolean isPendingLoveFood(ItemStack itemStack) {
+        return this.pendingLoveCause != null
+                && !this.isBaby()
+                && !itemStack.is(CACItems.CLAM.get())
+                && this.isFood(itemStack);
+    }
+
+    private void applyPendingLove() {
+        UUID loveCause = this.pendingLoveCause;
+        this.pendingLoveCause = null;
+        Player player = loveCause == null ? null : this.level().getPlayerByUUID(loveCause);
+        if (player != null && this.canFallInLove()) {
+            this.setInLove(player);
+        }
     }
 
     @Override
@@ -326,6 +468,11 @@ public class OtterEntity extends Animal implements GeoEntity {
     @Override
     public boolean canBreed() {
         return !this.isBaby();
+    }
+
+    @Override
+    public float getAgeScale() {
+        return this.isBaby() ? BABY_SCALE : 1.0F;
     }
 
     @Override
@@ -380,30 +527,30 @@ public class OtterEntity extends Animal implements GeoEntity {
 
     private RawAnimation animation(AnimationTest<?> event) {
         if (isFloating()) {
-            return RawAnimation.begin().thenLoop("swim_2");
+            return FLOATING_ANIMATION;
         }
 
         if (isEating()) {
             if (getMainHandItem().is(CACItems.CLAM.get())) {
-                return RawAnimation.begin().then("standing_eat_clam", LoopType.PLAY_ONCE);
+                return STANDING_EAT_CLAM_ANIMATION;
             }
 
-            return RawAnimation.begin().then("standing_eat", LoopType.PLAY_ONCE);
+            return STANDING_EAT_ANIMATION;
         }
 
         if (isInWater()) {
-            return RawAnimation.begin().thenLoop("swim");
+            return SWIM_ANIMATION;
         }
 
         if (event.isMoving()) {
             if (getDeltaMovement().length() >= 0.18F) {
-                return RawAnimation.begin().thenLoop("run");
+                return RUN_ANIMATION;
             } else {
-                return RawAnimation.begin().thenLoop("walk");
+                return WALK_ANIMATION;
             }
         }
 
-        return RawAnimation.begin().thenLoop("idle");
+        return IDLE_ANIMATION;
     }
 
     private PlayState predicate(AnimationTest<?> event) {
@@ -413,7 +560,7 @@ public class OtterEntity extends Animal implements GeoEntity {
 
     private PlayState floatingHandsPredicate(AnimationTest<?> event) {
         if (isFloating() && isEating()) {
-            event.controller().setAnimation(RawAnimation.begin().then("floating_eat", LoopType.PLAY_ONCE));
+            event.controller().setAnimation(FLOATING_EAT_ANIMATION);
             return PlayState.CONTINUE;
         }
         event.controller().reset();
@@ -441,12 +588,17 @@ public class OtterEntity extends Animal implements GeoEntity {
             ItemEntity itemEntity = new ItemEntity(this.level(), this.getX(), this.getY(), this.getZ(), thrownAway);
             itemEntity.setPickUpDelay(40);
             itemEntity.setThrower(this);
+            this.rejectedFoodItems.add(itemEntity.getUUID());
             this.getMainHandItem().shrink(thrownAway.getCount());
             this.level().addFreshEntity(itemEntity);
         }
     }
 
     public boolean rejectedItem(ItemEntity itemEntity) {
+        if (this.rejectedFoodItems.contains(itemEntity.getUUID())) {
+            return true;
+        }
+
         if (itemEntity.getOwner() != null) {
             return itemEntity.getOwner().equals(this.getUUID());
         }
@@ -455,18 +607,23 @@ public class OtterEntity extends Animal implements GeoEntity {
 
     private boolean canPickUpFood(ItemEntity itemEntity) {
         return this.level() instanceof ServerLevel serverLevel
+                && this.rejectedFoodPickupCooldown <= 0
                 && this.wantsToPickUp(serverLevel, itemEntity.getItem())
                 && !this.rejectedItem(itemEntity);
     }
 
     private void startEating() {
         if (this.isFood(this.getMainHandItem())) {
-            this.eatDelay = this.getMainHandItem().is(CACItems.CLAM.get()) ? 45 : 12;
+            this.eatDelay = this.getEatDelay(this.getMainHandItem());
             this.setEating(true);
             if (breakingClamOnLand()) {
                 playSound(CACSounds.OTTER_CLAM_BREAK_LAND.get(), 1.2F, 1.0F);
             }
         }
+    }
+
+    private int getEatDelay(ItemStack itemStack) {
+        return itemStack.is(CACItems.CLAM.get()) || this.isFloating() ? FLOATING_EAT_DELAY : SHORT_EAT_DELAY;
     }
 
     private void startFloating(int time) {
@@ -481,6 +638,14 @@ public class OtterEntity extends Animal implements GeoEntity {
 
     public int getHuntDelay() {
         return huntDelay;
+    }
+
+    private boolean canHuntFish() {
+        return this.getHuntDelay() <= 0
+                && this.getMainHandItem().isEmpty()
+                && !this.needsSurface()
+                && !this.isFloating()
+                && !this.isEating();
     }
 
     public boolean needsSurface() {
@@ -524,29 +689,228 @@ public class OtterEntity extends Animal implements GeoEntity {
         return false;
     }
 
-    private boolean isReadyToFloat() {
-        BlockPos eye = BlockPos.containing(this.getX(), this.getEyeY() + 0.25, this.getZ());
+    private boolean isReadyToFloat(double surfaceY) {
+        double floatingY = this.getFloatingY(surfaceY);
+        double yDistance = this.getY() - floatingY;
+        return this.isAtWaterSurface() || (yDistance >= -FLOATING_SURFACE_TOLERANCE_BELOW && yDistance <= FLOATING_SURFACE_TOLERANCE_ABOVE);
+    }
+
+    private boolean isAtWaterSurface() {
+        BlockPos eye = BlockPos.containing(this.getX(), this.getEyeY() + 0.25D, this.getZ());
         return !this.isUnderWater() && this.level().getBlockState(eye).isAir() && this.level().getFluidState(eye.below()).is(FluidTags.WATER);
     }
 
+    private void setBodyPitch(float xRot) {
+        this.setXRot(xRot);
+        this.xRotO = xRot;
+    }
+
+    private boolean isSurfacingForFood() {
+        return this.needsSurface && !this.isFloating() && this.isFood(this.getMainHandItem());
+    }
+
+    private boolean tryStartFloating(int time) {
+        double surfaceY = this.findWaterSurfaceYNearBody();
+        if (Double.isNaN(surfaceY)) {
+            return false;
+        }
+
+        double floatingY = this.getFloatingY(surfaceY);
+        if (!this.isReadyToFloat(surfaceY)) {
+            return false;
+        }
+
+        this.setPos(this.getX(), floatingY, this.getZ());
+        this.setDeltaMovement(this.getDeltaMovement().multiply(1.0D, 0.0D, 1.0D));
+        this.setYya(0.0F);
+        this.setSpeed(0.0F);
+        this.startFloating(time);
+        return true;
+    }
+
     private Vec3 findSurfacePosStraightUp() {
-        BlockPos.MutableBlockPos curr = new BlockPos.MutableBlockPos(Mth.floor(this.getX()), Mth.floor(this.getEyeY()), Mth.floor(this.getZ()));
+        return this.findSurfacePosAt(Mth.floor(this.getX()), Mth.floor(this.getZ()));
+    }
 
-        boolean waterInSight = false;
-        for (int i = 0; i < 40; i++) {
-            BlockPos pos = curr.above(i);
-            if (this.level().getFluidState(pos).is(FluidTags.WATER)) {
-                waterInSight = true;
-                continue;
+    private SurfaceTarget findReachableSurfaceTarget(Set<BlockPos> avoidedTargets) {
+        int originX = Mth.floor(this.getX());
+        int originZ = Mth.floor(this.getZ());
+
+        if (this.isSurfacingForFood()) {
+            SurfaceTarget nearby = this.findReachableSurfaceTargetInRange(originX, originZ, 1, FOOD_SURFACE_DYNAMIC_RANGE, avoidedTargets);
+            if (nearby != null) {
+                return nearby;
             }
+        }
 
-            if (waterInSight && this.level().getBlockState(pos).isAir()) {
-                return Vec3.atCenterOf(pos).add(0.0D, 0.25D, 0.0D);
+        Vec3 straightUp = this.findSurfacePosStraightUp();
+        if (straightUp != null) {
+            if (this.hasClearColumnToSurface(straightUp) && !this.isAvoidedSurfaceTarget(straightUp, avoidedTargets)) {
+                return new SurfaceTarget(straightUp, null, true);
             }
+        }
 
+        int startRadius = this.isSurfacingForFood() ? FOOD_SURFACE_DYNAMIC_RANGE + 1 : 1;
+        return this.findReachableSurfaceTargetInRange(originX, originZ, startRadius, WATER_SURFACE_HORIZONTAL_RANGE, avoidedTargets);
+    }
+
+    private SurfaceTarget findReachableSurfaceTargetInRange(int originX, int originZ, int startRadius, int endRadius, Set<BlockPos> avoidedTargets) {
+        Map<BlockPos, Vec3> targetsByPos = new HashMap<>();
+        Set<BlockPos> pathTargets = new HashSet<>();
+
+        for (int radius = startRadius; radius <= endRadius; radius++) {
+            for (int dx = -radius; dx <= radius; dx++) {
+                for (int dz = -radius; dz <= radius; dz++) {
+                    if (Math.max(Math.abs(dx), Math.abs(dz)) != radius) {
+                        continue;
+                    }
+
+                    Vec3 target = this.findSurfacePosAt(originX + dx, originZ + dz);
+                    if (target == null) {
+                        continue;
+                    }
+
+                    if (!this.hasClearColumnToSurface(target)) {
+                        continue;
+                    }
+
+                    BlockPos waterPos = this.getSurfaceWaterPos(target);
+                    BlockPos airPos = BlockPos.containing(target);
+                    if (avoidedTargets.contains(waterPos) || avoidedTargets.contains(airPos)) {
+                        continue;
+                    }
+
+                    targetsByPos.put(waterPos, target);
+                    targetsByPos.put(airPos, target);
+                    pathTargets.add(waterPos);
+                    pathTargets.add(airPos);
+                }
+            }
+        }
+
+        SurfaceTarget target = this.createSurfaceTarget(pathTargets, targetsByPos);
+        if (target != null && target.reachable()) {
+            return target;
         }
 
         return null;
+    }
+
+    private boolean isAvoidedSurfaceTarget(Vec3 targetPos, Set<BlockPos> avoidedTargets) {
+        return !avoidedTargets.isEmpty()
+                && (avoidedTargets.contains(this.getSurfaceWaterPos(targetPos)) || avoidedTargets.contains(BlockPos.containing(targetPos)));
+    }
+
+    private Vec3 findSurfacePosAt(int x, int z) {
+        double surfaceY = this.findWaterSurfaceY(x, z, Mth.floor(this.getY()) - WATER_SURFACE_BELOW_RANGE, Mth.floor(this.getY()) + WATER_SURFACE_SEARCH_RANGE);
+        if (Double.isNaN(surfaceY)) {
+            return null;
+        }
+
+        return new Vec3(x + 0.5D, this.getSurfaceNavigationY(surfaceY), z + 0.5D);
+    }
+
+    private boolean hasClearColumnToSurface(Vec3 surfacePos) {
+        int x = Mth.floor(surfacePos.x());
+        int z = Mth.floor(surfacePos.z());
+        int startY = Mth.floor(this.getY());
+        int endY = Mth.floor(surfacePos.y());
+        BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
+
+        for (int y = startY; y <= endY; y++) {
+            pos.set(x, y, z);
+            if (!this.level().getBlockState(pos).getCollisionShape(this.level(), pos).isEmpty()) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private SurfaceTarget createSurfaceTarget(Set<BlockPos> pathTargets, Map<BlockPos, Vec3> targetsByPos) {
+        if (pathTargets.isEmpty()) {
+            return null;
+        }
+
+        Path path = this.otterNavigation().createSurfacePath(pathTargets);
+        if (path == null || path.getNodeCount() <= 0 || path.getTarget() == null) {
+            return null;
+        }
+
+        Vec3 target = targetsByPos.get(path.getTarget());
+        if (target == null) {
+            return null;
+        }
+
+        return new SurfaceTarget(target, path, path.canReach());
+    }
+
+    private double findWaterSurfaceYNearBody() {
+        int startY = Mth.floor(this.getY()) - WATER_SURFACE_BELOW_RANGE;
+        int endY = Mth.floor(this.getY() + this.getBbHeight()) + WATER_SURFACE_ABOVE_RANGE;
+        return this.findWaterSurfaceY(Mth.floor(this.getX()), Mth.floor(this.getZ()), startY, endY);
+    }
+
+    private double findWaterSurfaceY(int x, int z, int startY, int endY) {
+        BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
+
+        for (int y = startY; y <= endY; y++) {
+            pos.set(x, y, z);
+            FluidState fluidState = this.level().getFluidState(pos);
+            if (this.isWaterSurface(pos, fluidState)) {
+                return this.getWaterSurfaceY(pos, fluidState);
+            }
+        }
+
+        return Double.NaN;
+    }
+
+    private boolean isWaterSurface(BlockPos waterPos, FluidState fluidState) {
+        return fluidState.is(FluidTags.WATER)
+                && fluidState.isSource()
+                && fluidState.getFlow(this.level(), waterPos).lengthSqr() < 1.0E-7D
+                && !this.level().getFluidState(waterPos.above()).is(FluidTags.WATER)
+                && this.level().getBlockState(waterPos.above()).isAir();
+    }
+
+    private double getWaterSurfaceY(BlockPos waterPos, FluidState fluidState) {
+        return waterPos.getY() + fluidState.getHeight(this.level(), waterPos);
+    }
+
+    private double getFloatingY(double surfaceY) {
+        return surfaceY - this.getBbHeight() * FLOATING_SUBMERGED_HEIGHT;
+    }
+
+    private double getSurfaceNavigationY(double surfaceY) {
+        return surfaceY + WATER_SURFACE_NAVIGATION_OFFSET;
+    }
+
+    private BlockPos getSurfaceWaterPos(Vec3 targetPos) {
+        return BlockPos.containing(targetPos.x(), targetPos.y() - WATER_SURFACE_NAVIGATION_OFFSET, targetPos.z());
+    }
+
+    private static final class SurfaceTarget {
+        private final Vec3 position;
+        private final Path path;
+        private final boolean reachable;
+
+        private SurfaceTarget(Vec3 position, Path path, boolean reachable) {
+            this.position = position;
+            this.path = path;
+            this.reachable = reachable;
+        }
+
+        private Vec3 position() {
+            return this.position;
+        }
+
+        private Path path() {
+            return this.path;
+        }
+
+        private boolean reachable() {
+            return this.reachable;
+        }
     }
 
     static class OtterMoveControl extends MoveControl {
@@ -565,7 +929,8 @@ public class OtterEntity extends Animal implements GeoEntity {
                 }
 
                 if (!this.otter.isFloating()) {
-                    if (this.operation == Operation.MOVE_TO && !this.mob.getNavigation().isDone()) {
+                    boolean surfacingMove = this.otter.needsSurface() && this.operation == Operation.MOVE_TO;
+                    if (this.operation == Operation.MOVE_TO && (surfacingMove || !this.mob.getNavigation().isDone())) {
                         double d0 = this.wantedX - this.mob.getX();
                         double d1 = this.wantedY - this.mob.getY();
                         double d2 = this.wantedZ - this.mob.getZ();
@@ -574,24 +939,29 @@ public class OtterEntity extends Animal implements GeoEntity {
                         if (distanceSqr < (double) 2.5000003E-7F) {
                             this.mob.setZza(0.0F);
                         } else {
-                            float yRot = (float) (Mth.atan2(d2, d0) * (double) (180F / (float) Math.PI)) - 90.0F;
-                            this.mob.setYRot(this.rotlerp(this.mob.getYRot(), yRot, 40.0F));
-                            this.mob.yBodyRot = this.mob.getYRot();
-                            this.mob.yHeadRot = this.mob.getYRot();
                             float speed = (float) (this.speedModifier * this.mob.getAttributeValue(Attributes.MOVEMENT_SPEED));
                             this.mob.setSpeed(speed * 0.2F);
 
                             double horizontalDistance = Math.sqrt(d0 * d0 + d2 * d2);
+                            boolean verticalSurfacing = surfacingMove && d1 > 0.0D && horizontalDistance <= SURFACE_VERTICAL_ASCENT_HORIZONTAL_DISTANCE;
+                            if (!verticalSurfacing) {
+                                float yRot = (float) (Mth.atan2(d2, d0) * (double) (180F / (float) Math.PI)) - 90.0F;
+                                this.mob.setYRot(this.rotlerp(this.mob.getYRot(), yRot, 40.0F));
+                            }
+                            this.mob.yBodyRot = this.mob.getYRot();
+                            this.mob.yHeadRot = this.mob.getYRot();
+
                             if (Math.abs(d1) > (double) 1.0E-5F || Math.abs(horizontalDistance) > (double) 1.0E-5F) {
                                 float xRot = -((float) (Mth.atan2(d1, horizontalDistance) * (double) (180F / (float) Math.PI)));
                                 xRot = Mth.clamp(Mth.wrapDegrees(xRot), -180.0F, 180.0F);
 
-                                // Fallback for the otter going to the abyss of the sea after hunting a fish when it failed to float (although this should not happen)
-                                if (this.otter.needsSurface() && xRot > 0.0F) {
+                                if (surfacingMove) {
+                                    xRot = this.otter.getSurfacingXRot(xRot, d1, horizontalDistance);
+                                } else if (this.otter.needsSurface() && xRot > 0.0F) {
                                     xRot = 0.0F;
                                 }
 
-                                this.mob.setXRot(this.rotlerp(this.mob.getXRot(), xRot, 45.0F));
+                                this.otter.setBodyPitch(this.rotlerp(this.mob.getXRot(), xRot, 45.0F));
                             }
 
                             BlockPos wantedPos = BlockPos.containing(this.wantedX, this.wantedY, this.wantedZ);
@@ -613,6 +983,9 @@ public class OtterEntity extends Animal implements GeoEntity {
                             float f1 = Mth.sin(this.mob.getXRot() * ((float) Math.PI / 180F));
                             this.mob.zza = f0 * speed;
                             this.mob.yya = -f1 * (speed);
+                            if (surfacingMove) {
+                                this.otter.otterNavigation().applySurfaceMovementAssist(new Vec3(this.wantedX, this.wantedY, this.wantedZ), speed);
+                            }
                         }
                     } else {
                         this.mob.setSpeed(0.0F);
@@ -638,6 +1011,16 @@ public class OtterEntity extends Animal implements GeoEntity {
         @Override
         public void tick() {
             if (this.otter.isInWater()) {
+                if (this.otter.needsSurface()) {
+                    if (this.lookAtCooldown > 0) {
+                        --this.lookAtCooldown;
+                    }
+
+                    this.otter.setBodyPitch(this.rotateTowards(this.mob.getXRot(), 0.0F, this.xMaxRotAngle));
+                    this.mob.yHeadRot = this.rotateTowards(this.mob.yHeadRot, this.mob.yBodyRot, this.yMaxRotSpeed);
+                    return;
+                }
+
                 if (this.lookAtCooldown > 0) {
                     --this.lookAtCooldown;
                     this.getYRotD().ifPresent((p_181134_) -> {
@@ -670,6 +1053,25 @@ public class OtterEntity extends Animal implements GeoEntity {
         @Override
         public boolean canUse() {
             return super.canUse() && !this.otter.isEating();
+        }
+    }
+
+    static class OtterMeleeAttackGoal extends MeleeAttackGoal {
+        private final OtterEntity otter;
+
+        public OtterMeleeAttackGoal(OtterEntity otterEntity) {
+            super(otterEntity, 1.2D, true);
+            this.otter = otterEntity;
+        }
+
+        @Override
+        public boolean canUse() {
+            return this.otter.canHuntFish() && super.canUse();
+        }
+
+        @Override
+        public boolean canContinueToUse() {
+            return this.otter.canHuntFish() && super.canContinueToUse();
         }
     }
 
@@ -746,12 +1148,12 @@ public class OtterEntity extends Animal implements GeoEntity {
 
     public class GoToSurfaceGoal extends Goal {
         private final int timeoutTime;
-        private boolean goingLand;
         private Vec3 targetPos;
+        private Path targetPath;
         private int timeoutTimer;
-
-        private int stuckTicks;
-        private double lastDist = Double.MAX_VALUE;
+        private boolean noSurfaceTarget;
+        private int failedSurfaceTargets;
+        private final Set<BlockPos> avoidedSurfaceTargets = new HashSet<>();
 
         public GoToSurfaceGoal(int timeoutTime) {
             this.timeoutTime = timeoutTime;
@@ -761,78 +1163,100 @@ public class OtterEntity extends Animal implements GeoEntity {
 
         @Override
         public boolean canUse() {
-            return OtterEntity.this.isAlive() && OtterEntity.this.needsSurface() && !OtterEntity.this.onGround() && !OtterEntity.this.isFloating();
+            return OtterEntity.this.isAlive() && OtterEntity.this.needsSurface() && (!OtterEntity.this.onGround() || OtterEntity.this.isInWater()) && !OtterEntity.this.isFloating();
         }
 
-        private void searchTargetPos() {
-            if (OtterEntity.this.isInWater() && OtterEntity.this.isFood(OtterEntity.this.getMainHandItem())) {
-                Vec3 surface = OtterEntity.this.findSurfacePosStraightUp();
-                if (surface != null) {
-                    this.targetPos = surface;
-                    return;
+        private boolean searchTargetPos() {
+            this.noSurfaceTarget = false;
+            this.targetPath = null;
+            OtterEntity.this.otterNavigation().resetSurfacePathProgress();
+            SurfaceTarget surface = OtterEntity.this.findReachableSurfaceTarget(this.avoidedSurfaceTargets);
+            if (surface != null) {
+                this.targetPos = surface.position();
+                this.targetPath = surface.path();
+                if (this.targetPath != null) {
+                    OtterEntity.this.otterNavigation().moveToSurfacePath(this.targetPath, SURFACE_PATH_SPEED);
                 }
-
+                return true;
             }
 
-            Vec3 surface = OtterEntity.this.findSurfacePosStraightUp();
-            if (surface != null) {
-                this.targetPos = surface;
-                return;
+            if (OtterEntity.this.isSurfacingForFood()) {
+                this.targetPos = null;
+                this.noSurfaceTarget = true;
+                return false;
             }
 
             this.targetPos = findAirPosition();
+            return this.targetPos != null;
         }
 
         @Override
         public void start() {
-            this.stuckTicks = 0;
-            this.lastDist = Double.MAX_VALUE;
+            OtterEntity.this.otterNavigation().resetSurfacePathProgress();
+            this.noSurfaceTarget = false;
+            this.failedSurfaceTargets = 0;
+            this.avoidedSurfaceTargets.clear();
             searchTargetPos();
         }
 
         @Override
         public void tick() {
-            // Embed goals sometimes computee client sided ticks due to a sync error, although this happens in singleplayer
-            // it's better to encapsulate the method
+            // Embedded goals can sometimes tick client-side in singleplayer, so keep this guarded.
             if (OtterEntity.this.level().isClientSide()) {
                 return;
             }
 
-            if (OtterEntity.this.isReadyToFloat()) {
-                OtterEntity.this.setDeltaMovement(OtterEntity.this.getDeltaMovement().multiply(1.0D, 0.0D, 1.0D));
-                OtterEntity.this.setYya(0.0F);
-                OtterEntity.this.setSpeed(0.0F);
-
-                OtterEntity.this.startFloating(OtterEntity.this.getRandom().nextInt(80, 201));
-
+            if (OtterEntity.this.tryStartFloating(OtterEntity.this.getRandom().nextInt(80, 201))) {
                 this.stop();
-
                 return;
             }
 
-            if (this.targetPos == null || !OtterEntity.this.level().getBlockState(BlockPos.containing(this.targetPos)).isAir()) {
+            if (this.noSurfaceTarget) {
+                if (this.timeoutTimer % 10 == 0) {
+                    searchTargetPos();
+                }
+                this.tickTimeout();
+                return;
+            }
+
+            if (this.targetPos == null || this.isTargetBlocked()) {
                 searchTargetPos();
                 this.tickTimeout();
                 return;
             }
 
-            OtterEntity.this.getLookControl().setLookAt(this.targetPos.x(), this.targetPos.y(), this.targetPos.z(), 85.0F, 85.0F);
+            OtterNavigation navigation = OtterEntity.this.otterNavigation();
+            OtterEntity.this.getLookControl().setLookAt(this.targetPos.x(), this.targetPos.y() + OtterEntity.this.getEyeHeight(), this.targetPos.z(), 85.0F, 85.0F);
             // When the entity goes up it sometimes has a LOT of velocity, so this may help (I hope)
-            OtterEntity.this.getNavigation().moveTo(this.targetPos.x(), this.targetPos.y(), this.targetPos.z(), 0.5);
+            if (this.targetPath == null) {
+                navigation.moveTo(this.targetPos.x(), this.targetPos.y(), this.targetPos.z(), SURFACE_DIRECT_SPEED);
+            }
 
-            double dx = this.targetPos.x() - OtterEntity.this.getX();
-            double dy = this.targetPos.y() - OtterEntity.this.getEyePosition().y();
-            double dz = this.targetPos.z() - OtterEntity.this.getZ();
+            Vec3 steeringTarget = navigation.getSurfaceSteeringTarget(this.targetPath, this.targetPos);
+            double dx = steeringTarget.x() - OtterEntity.this.getX();
+            double dy = steeringTarget.y() - OtterEntity.this.getEyePosition().y();
+            double dz = steeringTarget.z() - OtterEntity.this.getZ();
+            double finalDx = this.targetPos.x() - OtterEntity.this.getX();
+            double finalDy = this.targetPos.y() - OtterEntity.this.getEyePosition().y();
+            double finalDz = this.targetPos.z() - OtterEntity.this.getZ();
 
             double horiz = dx * dx + dz * dz;
+            double finalHoriz = finalDx * finalDx + finalDz * finalDz;
             // Pushes the entity to Y+ in case it's near the surface 'line'
             boolean navDone = OtterEntity.this.getNavigation().isDone();
             double basePush = 0.02D;
-            if ((dy > 0.0D) && OtterEntity.this.isUnderWater()) {
-                if (navDone || horiz <= 0.25D) {
+            double surfaceY = OtterEntity.this.findWaterSurfaceYNearBody();
+            boolean nearSurfaceTarget = finalHoriz <= 2.25D && !Double.isNaN(surfaceY);
+            boolean followingPath = this.targetPath != null && !this.targetPath.isDone() && !navDone && !nearSurfaceTarget;
+            double assistDy = nearSurfaceTarget ? finalDy : dy;
+            double assistHoriz = nearSurfaceTarget ? finalHoriz : horiz;
+            navigation.steerSurfacePath(this.targetPath, steeringTarget, this.targetPos, followingPath, SURFACE_PATH_SPEED, SURFACE_DIRECT_SPEED);
+            if (!followingPath && (assistDy > 0.0D) && OtterEntity.this.isUnderWater()) {
+                if (navDone || assistHoriz <= 0.25D) {
                     Vec3 v = OtterEntity.this.getDeltaMovement();
-                    OtterEntity.this.setDeltaMovement(v.x * 0.6D, v.y + 0.01D, v.z * 0.6D);
-                } else if (horiz <= 9.0D) {
+                    double push = nearSurfaceTarget ? SURFACE_FINAL_ASCENT_PUSH : 0.01D;
+                    OtterEntity.this.setDeltaMovement(v.x * 0.6D, Math.max(v.y + push, push), v.z * 0.6D);
+                } else if (assistHoriz <= 9.0D) {
                     OtterEntity.this.push(0.0D, basePush, 0.0D);
                 }
 
@@ -840,43 +1264,49 @@ public class OtterEntity extends Animal implements GeoEntity {
 
             // Hardcoded velocity clamp near the desired surface as high velocity tends to push the otter far away from the
             // relevant pos, thus making it fly in the air
-            double absDy = Math.abs(dy);
-            if (absDy <= 0.85725D) {
-                OtterEntity.this.setDeltaMovement(OtterEntity.this.getDeltaMovement().scale(0.35D));
+            double absDy = Math.abs(assistDy);
+            if (!followingPath && absDy <= (nearSurfaceTarget ? 1.5D : 0.85725D)) {
+                Vec3 movement = OtterEntity.this.getDeltaMovement();
+                if (OtterEntity.this.needsSurface() && assistDy > 0.0D && OtterEntity.this.isUnderWater()) {
+                    double y = Mth.clamp(movement.y(), 0.05D, 0.12D);
+                    OtterEntity.this.setDeltaMovement(movement.x() * 0.35D, y, movement.z() * 0.35D);
+                } else {
+                    OtterEntity.this.setDeltaMovement(movement.scale(0.35D));
+                }
             }
 
             // Starts the floating state
-            if (absDy <= 0.1D && OtterEntity.this.isReadyToFloat()) {
-                OtterEntity.this.setDeltaMovement(OtterEntity.this.getDeltaMovement().multiply(1.0D, 0.0D, 1.0D));
-                OtterEntity.this.setYya(0.0F);
-                OtterEntity.this.setSpeed(0.0F);
-                OtterEntity.this.startFloating(OtterEntity.this.getRandom().nextInt(80, 201));
-
+            if (absDy <= 0.1D && OtterEntity.this.tryStartFloating(OtterEntity.this.getRandom().nextInt(80, 201))) {
                 this.stop();
-
                 return;
             }
 
-            double dist = dx * dx + dy * dy + dz * dz;
-            if (dist > this.lastDist - 0.0001D) {
-                this.stuckTicks++;
-            } else {
-                this.stuckTicks = 0;
-            }
-
-            this.lastDist = dist;
+            OtterNavigation.SurfacePathProgress progress = navigation.updateSurfacePathProgress(this.targetPath, steeringTarget, this.targetPos);
 
             // Fallback if the entity isn't near of the desired pos
-            if ((navDone && dist > 2.25D) || this.stuckTicks > 20) {
-                if (OtterEntity.this.isReadyToFloat()) {
-                    OtterEntity.this.startFloating(OtterEntity.this.getRandom().nextInt(80, 201));
+            int stuckLimit = this.targetPath == null ? SURFACE_DIRECT_STUCK_TICKS : SURFACE_PATH_STUCK_TICKS;
+            if ((navDone && progress.finalDist() > 2.25D && !nearSurfaceTarget) || progress.stuckTicks() > stuckLimit) {
+                if (OtterEntity.this.tryStartFloating(OtterEntity.this.getRandom().nextInt(80, 201))) {
                     this.stop();
                     return;
                 }
 
+                if (OtterEntity.this.isSurfacingForFood() && this.avoidCurrentSurfaceTarget()) {
+                    ++this.failedSurfaceTargets;
+                    if (this.failedSurfaceTargets >= SURFACE_BAD_TARGET_LIMIT) {
+                        OtterEntity.this.cancelFoodInteraction(true);
+                        this.stop();
+                        return;
+                    }
+
+                    if (searchTargetPos()) {
+                        this.tickTimeout();
+                        return;
+                    }
+                }
+
                 searchTargetPos();
                 this.tickTimeout();
-                this.stuckTicks = 0;
             }
 
         }
@@ -892,11 +1322,31 @@ public class OtterEntity extends Animal implements GeoEntity {
             }
             if (this.timeoutTimer <= 0) {
                 OtterEntity.this.playSound(CACSounds.OTTER_AMBIENT.get(), OtterEntity.this.getSoundVolume(), 0.3F);
-                OtterEntity.this.rejectFood();
+                OtterEntity.this.cancelFoodInteraction(true);
                 this.stop();
                 return;
             }
             --this.timeoutTimer;
+        }
+
+        private boolean avoidCurrentSurfaceTarget() {
+            boolean added = false;
+            if (this.targetPos != null) {
+                added |= this.avoidedSurfaceTargets.add(OtterEntity.this.getSurfaceWaterPos(this.targetPos));
+                added |= this.avoidedSurfaceTargets.add(BlockPos.containing(this.targetPos));
+            }
+
+            if (this.targetPath != null && this.targetPath.getTarget() != null) {
+                added |= this.avoidedSurfaceTargets.add(this.targetPath.getTarget());
+            }
+
+            return added;
+        }
+
+        private boolean isTargetBlocked() {
+            BlockPos targetBlock = BlockPos.containing(this.targetPos);
+            return !OtterEntity.this.level().getBlockState(targetBlock).isAir()
+                    && !OtterEntity.this.level().getFluidState(targetBlock).is(FluidTags.WATER);
         }
 
         @Override
@@ -906,8 +1356,11 @@ public class OtterEntity extends Animal implements GeoEntity {
             this.timeoutTimer = this.timeoutTime;
 
             this.targetPos = null;
-            this.stuckTicks = 0;
-            this.lastDist = Double.MAX_VALUE;
+            this.targetPath = null;
+            this.noSurfaceTarget = false;
+            this.failedSurfaceTargets = 0;
+            this.avoidedSurfaceTargets.clear();
+            OtterEntity.this.otterNavigation().resetSurfacePathProgress();
         }
 
         private Vec3 findAirPosition() {
@@ -924,6 +1377,9 @@ public class OtterEntity extends Animal implements GeoEntity {
     }
 
     public class SearchFoodGoal extends Goal {
+        private ItemEntity targetFood;
+        private int timeToRecalcPath;
+
         public SearchFoodGoal() {
             this.setFlags(EnumSet.of(Flag.MOVE, Flag.LOOK));
         }
@@ -932,29 +1388,58 @@ public class OtterEntity extends Animal implements GeoEntity {
         public boolean canUse() {
             if (!OtterEntity.this.getMainHandItem().isEmpty()) {
                 return false;
-            } else {
-                List<ItemEntity> itemsInRadius = OtterEntity.this.level().getEntitiesOfClass(ItemEntity.class, OtterEntity.this.getBoundingBox().inflate(8.0D, 8.0D, 8.0D), OtterEntity.this::canPickUpFood);
-                return !itemsInRadius.isEmpty();
             }
+
+            this.targetFood = this.findFood();
+            return this.targetFood != null;
+        }
+
+        @Override
+        public boolean canContinueToUse() {
+            return this.targetFood != null
+                    && this.targetFood.isAlive()
+                    && OtterEntity.this.getMainHandItem().isEmpty()
+                    && OtterEntity.this.canPickUpFood(this.targetFood);
         }
 
         @Override
         public void tick() {
-            List<ItemEntity> itemsInRadius = OtterEntity.this.level().getEntitiesOfClass(ItemEntity.class, OtterEntity.this.getBoundingBox().inflate(8.0D, 8.0D, 8.0D), OtterEntity.this::canPickUpFood);
-            ItemStack handStack = OtterEntity.this.getMainHandItem();
-            if (handStack.isEmpty() && !itemsInRadius.isEmpty()) {
-                Path path = OtterEntity.this.getNavigation().createPath(itemsInRadius.get(0), 0);
-                OtterEntity.this.getNavigation().moveTo(path, 1.0D);
+            if (--this.timeToRecalcPath <= 0) {
+                this.timeToRecalcPath = this.adjustedTickDelay(SEARCH_FOOD_PATH_RECALC_INTERVAL);
+                this.moveToFood();
             }
         }
 
         @Override
         public void start() {
-            List<ItemEntity> itemsInRadius = OtterEntity.this.level().getEntitiesOfClass(ItemEntity.class, OtterEntity.this.getBoundingBox().inflate(8.0D, 8.0D, 8.0D), OtterEntity.this::canPickUpFood);
-            if (!itemsInRadius.isEmpty()) {
-                Path path = OtterEntity.this.getNavigation().createPath(itemsInRadius.get(0), 0);
+            this.timeToRecalcPath = 0;
+            this.moveToFood();
+        }
+
+        @Override
+        public void stop() {
+            this.targetFood = null;
+            this.timeToRecalcPath = 0;
+        }
+
+        private ItemEntity findFood() {
+            var itemsInRadius = OtterEntity.this.level().getEntitiesOfClass(ItemEntity.class, OtterEntity.this.getBoundingBox().inflate(SEARCH_FOOD_RANGE), OtterEntity.this::canPickUpFood);
+            return itemsInRadius.isEmpty() ? null : itemsInRadius.get(0);
+        }
+
+        private void moveToFood() {
+            if (this.targetFood != null) {
+                Path path = OtterEntity.this.getNavigation().createPath(this.targetFood, 0);
                 OtterEntity.this.getNavigation().moveTo(path, 1.0D);
             }
         }
+    }
+
+    private float getSurfacingXRot(float xRot, double dy, double horizontalDistance) {
+        if (dy > 0.0D && horizontalDistance <= SURFACE_VERTICAL_ASCENT_HORIZONTAL_DISTANCE) {
+            return 0.0F;
+        }
+
+        return Mth.clamp(xRot, SURFACE_SWIM_MIN_X_ROT, SURFACE_SWIM_MAX_X_ROT);
     }
 }
