@@ -2,6 +2,7 @@ package com.github.eterdelta.crittersandcompanions.entity.brain;
 
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -11,7 +12,6 @@ import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.ai.navigation.AmphibiousPathNavigation;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.pathfinder.AmphibiousNodeEvaluator;
 import net.minecraft.world.level.pathfinder.Path;
 import net.minecraft.world.level.pathfinder.PathComputationType;
 import net.minecraft.world.level.pathfinder.PathFinder;
@@ -30,6 +30,19 @@ public class OtterNavigation extends AmphibiousPathNavigation {
 
     private static final double PROGRESS_MIN2 = 0.35D * 0.35D;
     private static final int PROGRESS_TICKS = 18;
+    private static final float SURFACE_REQUIRED_PATH_LENGTH = 96.0F;
+    private static final float SURFACE_MAX_VISITED_NODES_MULTIPLIER = 8.0F;
+    private static final int SURFACE_PATH_REGION_OFFSET = 8;
+    private static final int SURFACE_PATH_REACH_ACCURACY = 1;
+    private static final double SURFACE_HORIZONTAL_PROGRESS_EPSILON = 1.0E-4D;
+    private static final double SURFACE_CLOSE_HORIZONTAL_DISTANCE = 0.5D * 0.5D;
+    private static final double SURFACE_LATERAL_Y_BIAS = 0.4D;
+    private static final double SURFACE_LATERAL_MIN_UPWARD_SPEED = 0.015D;
+    private static final double SURFACE_SWIM_MIN_HORIZONTAL_ACCEL = 0.02D;
+    private static final double SURFACE_SWIM_MAX_HORIZONTAL_ACCEL = 0.045D;
+    private static final double SURFACE_SWIM_MIN_UPWARD_SPEED = 0.025D;
+    private static final double SURFACE_SWIM_MAX_UPWARD_SPEED = 0.12D;
+    private static final double SURFACE_SWIM_MAX_HORIZONTAL_SPEED = 0.15D;
 
     private final Cache<BlockPos, Boolean> cache = CacheBuilder.newBuilder()
             .maximumSize(12000)
@@ -40,6 +53,14 @@ public class OtterNavigation extends AmphibiousPathNavigation {
     private int lastCheckTick = 0;
     private int stuckReplans = 0;
     private int jumpCooldown = 0;
+    private int surfacePathStuckTicks = 0;
+    private double lastSurfacePathDist = Double.MAX_VALUE;
+    private double lastSurfacePathHorizontalDist = Double.MAX_VALUE;
+    private double lastSurfacePathMobX = Double.NaN;
+    private double lastSurfacePathMobZ = Double.NaN;
+    private int lastSurfacePathNodeIndex = -1;
+    private double surfacePathStartY = Double.NaN;
+    private boolean surfacePathMode = false;
 
     public OtterNavigation(Mob mob, Level level) {
         super(mob, level);
@@ -48,7 +69,7 @@ public class OtterNavigation extends AmphibiousPathNavigation {
 
     @Override
     protected PathFinder createPathFinder(int nodes) {
-        AmphibiousNodeEvaluator evaluator = new AmphibiousNodeEvaluator(true);
+        OtterNodeEvaluator evaluator = new OtterNodeEvaluator();
         evaluator.setCanPassDoors(false);
         this.nodeEvaluator = evaluator;
         return new PathFinder(this.nodeEvaluator, nodes);
@@ -57,6 +78,138 @@ public class OtterNavigation extends AmphibiousPathNavigation {
     @Override
     protected boolean canUpdatePath() {
         return true;
+    }
+
+    public void resetSurfacePathProgress() {
+        this.surfacePathStuckTicks = 0;
+        this.lastSurfacePathDist = Double.MAX_VALUE;
+        this.lastSurfacePathHorizontalDist = Double.MAX_VALUE;
+        this.lastSurfacePathMobX = Double.NaN;
+        this.lastSurfacePathMobZ = Double.NaN;
+        this.lastSurfacePathNodeIndex = -1;
+        this.surfacePathStartY = Double.NaN;
+        this.surfacePathMode = false;
+    }
+
+    public int getSurfacePathStuckTicks() {
+        return this.surfacePathStuckTicks;
+    }
+
+    public Path createSurfacePath(Set<BlockPos> targets) {
+        if (targets.isEmpty()) {
+            return null;
+        }
+
+        this.setMaxVisitedNodesMultiplier(SURFACE_MAX_VISITED_NODES_MULTIPLIER);
+        try {
+            return this.createPath(targets, SURFACE_PATH_REGION_OFFSET, false, SURFACE_PATH_REACH_ACCURACY, SURFACE_REQUIRED_PATH_LENGTH);
+        } finally {
+            this.resetMaxVisitedNodesMultiplier();
+        }
+    }
+
+    public boolean moveToSurfacePath(Path path, double speed) {
+        this.surfacePathMode = path != null;
+        if (this.surfacePathMode && Double.isNaN(this.surfacePathStartY)) {
+            this.surfacePathStartY = this.mob.getY();
+        }
+        return this.moveTo(path, speed);
+    }
+
+    @Override
+    public void stop() {
+        this.surfacePathMode = false;
+        super.stop();
+    }
+
+    public Vec3 getSurfaceSteeringTarget(Path path, Vec3 fallbackTarget) {
+        if (path != null && !path.isDone()) {
+            return this.adjustSurfaceSteeringTarget(path.getNextEntityPos(this.mob));
+        }
+
+        return fallbackTarget;
+    }
+
+    public void steerSurfacePath(Path path, Vec3 steeringTarget, Vec3 targetPos, boolean followingPath, double pathSpeed, double directSpeed) {
+        if (path == null) {
+            return;
+        }
+
+        Vec3 moveTarget = followingPath ? steeringTarget : targetPos;
+        double speed = followingPath ? pathSpeed : directSpeed;
+        this.mob.getMoveControl().setWantedPosition(moveTarget.x(), moveTarget.y(), moveTarget.z(), speed);
+    }
+
+    public SurfacePathProgress updateSurfacePathProgress(Path path, Vec3 steeringTarget, Vec3 finalTarget) {
+        double dx = steeringTarget.x() - this.mob.getX();
+        double dy = steeringTarget.y() - this.mob.getEyePosition().y();
+        double dz = steeringTarget.z() - this.mob.getZ();
+        double finalDx = finalTarget.x() - this.mob.getX();
+        double finalDy = finalTarget.y() - this.mob.getEyePosition().y();
+        double finalDz = finalTarget.z() - this.mob.getZ();
+
+        double progressDist = dx * dx + dy * dy + dz * dz;
+        double horizontalDist = dx * dx + dz * dz;
+        double finalDist = finalDx * finalDx + finalDy * finalDy + finalDz * finalDz;
+        double mobHorizontalMove = Double.isNaN(this.lastSurfacePathMobX) || Double.isNaN(this.lastSurfacePathMobZ)
+                ? Double.MAX_VALUE
+                : this.mob.distanceToSqr(this.lastSurfacePathMobX, this.mob.getY(), this.lastSurfacePathMobZ);
+
+        if (path != null) {
+            int pathNodeIndex = path.getNextNodeIndex();
+            if (pathNodeIndex != this.lastSurfacePathNodeIndex) {
+                this.surfacePathStuckTicks = 0;
+                this.lastSurfacePathNodeIndex = pathNodeIndex;
+            } else if (horizontalDist <= SURFACE_CLOSE_HORIZONTAL_DISTANCE && progressDist > this.lastSurfacePathDist - SURFACE_HORIZONTAL_PROGRESS_EPSILON) {
+                this.surfacePathStuckTicks++;
+            } else if (horizontalDist > SURFACE_CLOSE_HORIZONTAL_DISTANCE && horizontalDist > this.lastSurfacePathHorizontalDist - SURFACE_HORIZONTAL_PROGRESS_EPSILON) {
+                this.surfacePathStuckTicks++;
+            } else {
+                this.surfacePathStuckTicks = 0;
+            }
+        } else if (progressDist > this.lastSurfacePathDist - SURFACE_HORIZONTAL_PROGRESS_EPSILON) {
+            this.surfacePathStuckTicks++;
+        } else {
+            this.surfacePathStuckTicks = 0;
+        }
+
+        this.lastSurfacePathDist = progressDist;
+        this.lastSurfacePathHorizontalDist = horizontalDist;
+        this.lastSurfacePathMobX = this.mob.getX();
+        this.lastSurfacePathMobZ = this.mob.getZ();
+        return new SurfacePathProgress(progressDist, horizontalDist, finalDist, mobHorizontalMove, this.surfacePathStuckTicks);
+    }
+
+    public void applySurfaceMovementAssist(Vec3 wantedPosition, double travelSpeed) {
+        if (!this.mob.isInWater()) {
+            return;
+        }
+
+        double dx = wantedPosition.x() - this.mob.getX();
+        double dy = wantedPosition.y() - this.mob.getY();
+        double dz = wantedPosition.z() - this.mob.getZ();
+        double horizontalDistance = Math.sqrt(dx * dx + dz * dz);
+
+        Vec3 movement = this.mob.getDeltaMovement();
+        if (horizontalDistance > 1.0E-4D) {
+            double accel = Mth.clamp(travelSpeed * 0.14D, SURFACE_SWIM_MIN_HORIZONTAL_ACCEL, SURFACE_SWIM_MAX_HORIZONTAL_ACCEL);
+            movement = movement.add(dx / horizontalDistance * accel, 0.0D, dz / horizontalDistance * accel);
+        }
+
+        if (dy > 0.03D) {
+            double upwardSpeed = Mth.clamp(dy * 0.08D, SURFACE_SWIM_MIN_UPWARD_SPEED, SURFACE_SWIM_MAX_UPWARD_SPEED);
+            movement = new Vec3(movement.x(), Math.max(movement.y(), upwardSpeed), movement.z());
+        } else if (dy > -0.25D) {
+            movement = new Vec3(movement.x(), Math.max(movement.y(), 0.005D), movement.z());
+        }
+
+        double horizontalSpeed = Math.sqrt(movement.x() * movement.x() + movement.z() * movement.z());
+        if (horizontalSpeed > SURFACE_SWIM_MAX_HORIZONTAL_SPEED) {
+            double scale = SURFACE_SWIM_MAX_HORIZONTAL_SPEED / horizontalSpeed;
+            movement = new Vec3(movement.x() * scale, movement.y(), movement.z() * scale);
+        }
+
+        this.mob.setDeltaMovement(movement);
     }
 
     @Override
@@ -86,23 +239,26 @@ public class OtterNavigation extends AmphibiousPathNavigation {
         int nextIdx = path.getNextNodeIndex();
         double yFloor = Math.floor(entityPos.y);
 
-        // Checks if there are any more nodes remaining on the same Y
-        int lastIdx = nextIdx;
-        while (lastIdx < path.getNodeCount() && path.getNode(lastIdx).y == yFloor) {
-            lastIdx++;
-        }
-
-        // Computes path to the approx next node
-        for (int i = lastIdx - 1; i > nextIdx; i--) {
-            if (catchF(entityPos, path.getEntityPosAtNode(this.mob, i))) {
-                path.setNextNodeIndex(i);
-                break;
+        if (!this.surfacePathMode) {
+            // Checks if there are any more nodes remaining on the same Y
+            int lastIdx = nextIdx;
+            while (lastIdx < path.getNodeCount() && path.getNode(lastIdx).y == yFloor) {
+                lastIdx++;
             }
 
+            // Computes path to the approx next node
+            for (int i = lastIdx - 1; i > nextIdx; i--) {
+                if (catchF(entityPos, path.getEntityPosAtNode(this.mob, i))) {
+                    path.setNextNodeIndex(i);
+                    break;
+                }
+
+            }
         }
 
         // If the entity is very close to the next node (or on an elevation change), advance the path index
-        if (hasReached(path, 0.8F) || (isAtElevationChange(path) && hasReached(path, 1.0F))) {
+        float reachThreshold = this.surfacePathMode && this.mob.isInWater() ? 1.0F : 0.8F;
+        if (hasReached(path, reachThreshold) || (isAtElevationChange(path) && hasReached(path, 1.0F))) {
             path.advance();
         }
 
@@ -110,7 +266,7 @@ public class OtterNavigation extends AmphibiousPathNavigation {
         if (path.isDone()) return;
 
         // Move the entity
-        Vec3 target = path.getNextEntityPos(this.mob);
+        Vec3 target = this.surfacePathMode ? this.adjustSurfaceSteeringTarget(path.getNextEntityPos(this.mob)) : path.getNextEntityPos(this.mob);
         this.mob.getMoveControl().setWantedPosition(target.x, target.y, target.z, this.speedModifier);
 
         // Jump fallback (if the entity is stuck)
@@ -152,9 +308,15 @@ public class OtterNavigation extends AmphibiousPathNavigation {
             if (this.mob.horizontalCollision && damp()) return;
 
             if (this.level.getFluidState(BlockPos.containing(this.mob.getEyePosition())).is(FluidTags.WATER)) {
-                if (target.y > entityPos.y) {
+                double targetHorizontalDist = target.distanceToSqr(entityPos.x, target.y, entityPos.z);
+                if (target.y > entityPos.y && (!this.surfacePathMode || targetHorizontalDist <= SURFACE_CLOSE_HORIZONTAL_DISTANCE)) {
                     // Forces a push to the higher Ys when the next node is in a higher Y than the current  one
                     this.mob.setDeltaMovement(this.mob.getDeltaMovement().add(0.0D, 0.03D, 0.0D));
+                } else if (this.surfacePathMode && targetHorizontalDist > SURFACE_CLOSE_HORIZONTAL_DISTANCE) {
+                    Vec3 movement = this.mob.getDeltaMovement();
+                    if (movement.y() < SURFACE_LATERAL_MIN_UPWARD_SPEED) {
+                        this.mob.setDeltaMovement(movement.x(), SURFACE_LATERAL_MIN_UPWARD_SPEED, movement.z());
+                    }
                 }
             }
 
@@ -175,10 +337,21 @@ public class OtterNavigation extends AmphibiousPathNavigation {
 
         if (this.mob.tickCount - this.lastCheckTick >= PROGRESS_TICKS) {
             Vec3 curr = this.mob.position();
-            if (curr.distanceToSqr(this.lastCheckPos) < PROGRESS_MIN2) {
+            double targetHorizontalDist = curr.distanceToSqr(target.x, curr.y, target.z);
+            double progressCheckDist = this.surfacePathMode && targetHorizontalDist > SURFACE_CLOSE_HORIZONTAL_DISTANCE
+                    ? curr.distanceToSqr(this.lastCheckPos.x, curr.y, this.lastCheckPos.z)
+                    : curr.distanceToSqr(this.lastCheckPos);
+            if (progressCheckDist < PROGRESS_MIN2) {
                 BlockPos targetPos = this.getTargetPos();
                 if (targetPos != null) {
-                    this.recomputePath();
+                    if (this.surfacePathMode) {
+                        Path surfacePath = this.createSurfacePath(Set.of(targetPos));
+                        if (surfacePath != null && surfacePath.getNodeCount() > 0) {
+                            this.moveToSurfacePath(surfacePath, Math.max(1.0D, this.speedModifier));
+                        }
+                    } else {
+                        this.recomputePath();
+                    }
                 }
 
                 if (++this.stuckReplans >= 3 && this.path != null && !this.path.isDone()) {
@@ -199,6 +372,17 @@ public class OtterNavigation extends AmphibiousPathNavigation {
             this.lastCheckTick = this.mob.tickCount;
         }
 
+    }
+
+    private Vec3 adjustSurfaceSteeringTarget(Vec3 target) {
+        double dx = target.x - this.mob.getX();
+        double dz = target.z - this.mob.getZ();
+        if (this.surfacePathMode && this.mob.isInWater() && dx * dx + dz * dz > SURFACE_CLOSE_HORIZONTAL_DISTANCE) {
+            double y = Math.max(this.surfacePathStartY, this.mob.getY() + SURFACE_LATERAL_Y_BIAS);
+            return new Vec3(target.x, y, target.z);
+        }
+
+        return target;
     }
 
     private boolean hasReached(Path path, float threshold) {
@@ -292,6 +476,7 @@ public class OtterNavigation extends AmphibiousPathNavigation {
 
         var pos = new BlockPos.MutableBlockPos();
         float t = 0.0F;
+        boolean waterPath = this.mob.isInWater();
 
         // March along the ray until we exceed the target distance
         while (t <= maxT) {
@@ -320,14 +505,21 @@ public class OtterNavigation extends AmphibiousPathNavigation {
             }
 
             pos.set(currentX, currentY, currentZ);
-            var immutablePos = pos.immutable();
+            BlockState blockState = this.level.getBlockState(pos);
+            boolean isPathfindable;
+            if (waterPath) {
+                isPathfindable = this.isClearWaterPathCell(pos, blockState);
+            } else {
+                var immutablePos = pos.immutable();
 
-            // Caches nodes to avoid recomputing them again
-            var isPathfindable = cache.getIfPresent(immutablePos);
-            if (isPathfindable == null) {
-                BlockState blockState = this.level.getBlockState(pos);
-                isPathfindable = blockState.isPathfindable(PathComputationType.LAND);
-                cache.put(immutablePos, isPathfindable);
+                // Caches nodes to avoid recomputing them again
+                Boolean cachedPathfindable = cache.getIfPresent(immutablePos);
+                if (cachedPathfindable == null) {
+                    isPathfindable = blockState.isPathfindable(PathComputationType.LAND);
+                    cache.put(immutablePos, isPathfindable);
+                } else {
+                    isPathfindable = cachedPathfindable;
+                }
             }
             if (!isPathfindable)
                 return false;
@@ -347,17 +539,46 @@ public class OtterNavigation extends AmphibiousPathNavigation {
         return true;
     }
 
+    private boolean isClearWaterPathCell(BlockPos pos, BlockState blockState) {
+        return blockState.getCollisionShape(this.level, pos).isEmpty()
+                && (this.level.getFluidState(pos).is(FluidTags.WATER) || blockState.isAir());
+    }
+
     private void perpendicularSideS(Vec3 dirNorm) {
         double px = -dirNorm.z; // perpen
         double pz = dirNorm.x; // perpen
         double side = this.mob.getRandom().nextBoolean() ? 1.0D : -1.0D;
 
         Vec3 curr = this.mob.position();
-        BlockPos step = BlockPos.containing(curr.x + px * side * 1.5D, curr.y, curr.z + pz * side * 1.5D);
-        if (this.isStableDestination(step)) {
-            this.moveTo(step.getX() + 0.5D, step.getY(), step.getZ() + 0.5D, 1.1D);
+        if (this.tryPerpendicularSide(dirNorm, px, pz, side, curr)) {
+            return;
         }
 
+        this.tryPerpendicularSide(dirNorm, px, pz, -side, curr);
+    }
+
+    private boolean tryPerpendicularSide(Vec3 dirNorm, double px, double pz, double side, Vec3 curr) {
+        BlockPos step = BlockPos.containing(curr.x + px * side * 1.5D, curr.y, curr.z + pz * side * 1.5D);
+        if (this.surfacePathMode && this.mob.isInWater()) {
+            return this.tryMoveToClearWater(step, Math.max(1.0D, this.speedModifier));
+        }
+
+        if (this.isStableDestination(step)) {
+            this.moveTo(step.getX() + 0.5D, step.getY(), step.getZ() + 0.5D, 1.1D);
+            return true;
+        }
+
+        return false;
+    }
+
+    private boolean tryMoveToClearWater(BlockPos step, double speed) {
+        BlockState blockState = this.level.getBlockState(step);
+        if (!this.isClearWaterPathCell(step, blockState) || !this.level.getFluidState(step).is(FluidTags.WATER)) {
+            return false;
+        }
+
+        this.mob.getMoveControl().setWantedPosition(step.getX() + 0.5D, step.getY() + 0.5D, step.getZ() + 0.5D, speed);
+        return true;
     }
 
     private boolean damp() {
@@ -379,6 +600,42 @@ public class OtterNavigation extends AmphibiousPathNavigation {
         }
 
         return false;
+    }
+
+    public static final class SurfacePathProgress {
+        private final double progressDist;
+        private final double horizontalDist;
+        private final double finalDist;
+        private final double mobHorizontalMove;
+        private final int stuckTicks;
+
+        private SurfacePathProgress(double progressDist, double horizontalDist, double finalDist, double mobHorizontalMove, int stuckTicks) {
+            this.progressDist = progressDist;
+            this.horizontalDist = horizontalDist;
+            this.finalDist = finalDist;
+            this.mobHorizontalMove = mobHorizontalMove;
+            this.stuckTicks = stuckTicks;
+        }
+
+        public double progressDist() {
+            return this.progressDist;
+        }
+
+        public double horizontalDist() {
+            return this.horizontalDist;
+        }
+
+        public double finalDist() {
+            return this.finalDist;
+        }
+
+        public double mobHorizontalMove() {
+            return this.mobHorizontalMove;
+        }
+
+        public int stuckTicks() {
+            return this.stuckTicks;
+        }
     }
 
 }
