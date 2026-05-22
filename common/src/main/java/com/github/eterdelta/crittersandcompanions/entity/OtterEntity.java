@@ -108,6 +108,9 @@ public class OtterEntity extends Animal implements GeoEntity {
     private static final int SURFACE_PATH_STUCK_TICKS = 40;
     private static final int SURFACE_BAD_TARGET_LIMIT = 6;
     private static final double SURFACE_FINAL_ASCENT_PUSH = 0.05D;
+    private static final int SURFACE_FINAL_RECOVERY_STUCK_TICKS = 2;
+    private static final double SURFACE_FINAL_RECOVERY_DISTANCE = 0.65D;
+    private static final double SURFACE_BREATH_EPSILON = 0.02D;
     private static final double SURFACE_VERTICAL_ASCENT_HORIZONTAL_DISTANCE = 1.0D;
     private static final float SURFACE_SWIM_MIN_X_ROT = -10.0F;
     private static final float SURFACE_SWIM_MAX_X_ROT = 0.0F;
@@ -315,7 +318,26 @@ public class OtterEntity extends Animal implements GeoEntity {
         }
 
         FluidState eyeFluid = this.level().getFluidState(eyePos);
-        return !eyeFluid.is(FluidTags.WATER) && eyeBlock.getCollisionShape(this.level(), eyePos).isEmpty();
+        if (!eyeFluid.is(FluidTags.WATER)) {
+            return eyeBlock.getCollisionShape(this.level(), eyePos).isEmpty();
+        }
+
+        return this.hasBreathableAirAboveWaterSurface(eyePos, eyeFluid);
+    }
+
+    private boolean hasBreathableAirAboveWaterSurface(BlockPos eyePos, FluidState eyeFluid) {
+        if (!this.isWaterSurface(eyePos, eyeFluid)) {
+            return false;
+        }
+
+        double surfaceY = this.getWaterSurfaceY(eyePos, eyeFluid);
+        if (this.getEyeY() + SURFACE_BREATH_EPSILON < surfaceY) {
+            return false;
+        }
+
+        BlockPos airPos = eyePos.above();
+        BlockState airBlock = this.level().getBlockState(airPos);
+        return airBlock.getCollisionShape(this.level(), airPos).isEmpty();
     }
 
     private boolean breakingClamOnLand() {
@@ -754,12 +776,40 @@ public class OtterEntity extends Animal implements GeoEntity {
             return false;
         }
 
+        this.startFloatingAt(time, floatingY);
+        return true;
+    }
+
+    private boolean tryRecoverFinalSurfaceFloat(int time, double surfaceY) {
+        if (Double.isNaN(surfaceY)) {
+            return false;
+        }
+
+        double floatingY = this.getFloatingY(surfaceY);
+        double yDistance = this.getY() - floatingY;
+        if (yDistance > FLOATING_SURFACE_TOLERANCE_ABOVE || yDistance < -SURFACE_FINAL_RECOVERY_DISTANCE) {
+            return false;
+        }
+
+        if (!this.canOccupyFloatingY(floatingY)) {
+            return false;
+        }
+
+        this.startFloatingAt(time, floatingY);
+        return true;
+    }
+
+    private boolean canOccupyFloatingY(double floatingY) {
+        double yOffset = floatingY - this.getY();
+        return this.level().noCollision(this, this.getBoundingBox().move(0.0D, yOffset, 0.0D));
+    }
+
+    private void startFloatingAt(int time, double floatingY) {
         this.setPos(this.getX(), floatingY, this.getZ());
         this.setDeltaMovement(this.getDeltaMovement().multiply(1.0D, 0.0D, 1.0D));
         this.setYya(0.0F);
         this.setSpeed(0.0F);
         this.startFloating(time);
-        return true;
     }
 
     private Vec3 findSurfacePosStraightUp() {
@@ -1316,6 +1366,14 @@ public class OtterEntity extends Animal implements GeoEntity {
             }
 
             OtterNavigation.SurfacePathProgress progress = navigation.updateSurfacePathProgress(this.targetPath, steeringTarget, this.targetPos);
+
+            if (nearSurfaceTarget
+                    && !followingPath
+                    && progress.stuckTicks() >= SURFACE_FINAL_RECOVERY_STUCK_TICKS
+                    && OtterEntity.this.tryRecoverFinalSurfaceFloat(OtterEntity.this.getRandom().nextInt(80, 201), surfaceY)) {
+                this.stop();
+                return;
+            }
 
             // Fallback if the entity isn't near of the desired pos
             int stuckLimit = this.targetPath == null ? SURFACE_DIRECT_STUCK_TICKS : SURFACE_PATH_STUCK_TICKS;
