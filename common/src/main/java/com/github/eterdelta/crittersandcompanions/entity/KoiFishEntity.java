@@ -35,6 +35,8 @@ import com.geckolib.animation.RawAnimation;
 import com.geckolib.util.GeckoLibUtil;
 
 public class KoiFishEntity extends AbstractSchoolingFish implements GeoEntity {
+    private static final double LAND_FLOP_VERTICAL_SPEED = 0.4D;
+    private static final float LAND_FLOP_HORIZONTAL_SPEED = 0.05F;
     private static final EntityDataAccessor<Integer> VARIANT = SynchedEntityData.defineId(KoiFishEntity.class, EntityDataSerializers.INT);
     private final AnimatableInstanceCache cache = GeckoLibUtil.createInstanceCache(this);
 
@@ -97,6 +99,32 @@ public class KoiFishEntity extends AbstractSchoolingFish implements GeoEntity {
     @Override
     protected SoundEvent getFlopSound() {
         return SoundEvents.TROPICAL_FISH_FLOP;
+    }
+
+    @Override
+    public void aiStep() {
+        boolean shouldHandleLandFlop = !this.isInWater() && this.onGround() && this.verticalCollision;
+        boolean wasVerticalCollision = this.verticalCollision;
+
+        if (shouldHandleLandFlop) {
+            this.verticalCollision = false;
+        }
+
+        super.aiStep();
+
+        if (shouldHandleLandFlop) {
+            this.verticalCollision = wasVerticalCollision;
+            this.flopFromGround();
+        }
+    }
+
+    private void flopFromGround() {
+        this.setDeltaMovement(this.getDeltaMovement().add(
+                (this.random.nextFloat() * 2.0F - 1.0F) * LAND_FLOP_HORIZONTAL_SPEED,
+                LAND_FLOP_VERTICAL_SPEED,
+                (this.random.nextFloat() * 2.0F - 1.0F) * LAND_FLOP_HORIZONTAL_SPEED));
+        this.setOnGround(false);
+        this.makeSound(this.getFlopSound());
     }
 
     @Override
