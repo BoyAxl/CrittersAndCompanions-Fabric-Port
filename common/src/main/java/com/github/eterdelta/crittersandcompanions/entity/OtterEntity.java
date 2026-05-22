@@ -61,6 +61,7 @@ import net.minecraft.world.item.ItemStackTemplate;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelAccessor;
 import net.minecraft.world.level.ServerLevelAccessor;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.material.Fluid;
 import net.minecraft.world.level.material.FluidState;
@@ -205,7 +206,9 @@ public class OtterEntity extends Animal implements GeoEntity {
 
     @Override
     public void baseTick() {
+        int previousAir = this.getAirSupply();
         super.baseTick();
+        this.preventInvalidAirRefill(previousAir);
         if (this.getLastHurtMob() != null) {
             if (this.tickCount - this.getLastHurtMobTimestamp() > 100) {
                 this.setLastHurtMob(null);
@@ -282,6 +285,37 @@ public class OtterEntity extends Animal implements GeoEntity {
                 }
             }
         }
+    }
+
+    private void preventInvalidAirRefill(int previousAir) {
+        if (this.level().isClientSide() || !this.isAlive() || !this.isInWater() || this.canBreatheUnderwater()) {
+            return;
+        }
+
+        int currentAir = this.getAirSupply();
+        if (currentAir <= previousAir || this.hasBreathableAirAtEyes()) {
+            return;
+        }
+
+        int correctedAir = previousAir - 1;
+        if (correctedAir <= -20 && this.level() instanceof ServerLevel serverLevel) {
+            this.setAirSupply(0);
+            this.level().broadcastEntityEvent(this, (byte) 67);
+            this.hurtServer(serverLevel, this.damageSources().drown(), 2.0F);
+        } else {
+            this.setAirSupply(correctedAir);
+        }
+    }
+
+    private boolean hasBreathableAirAtEyes() {
+        BlockPos eyePos = BlockPos.containing(this.getX(), this.getEyeY(), this.getZ());
+        BlockState eyeBlock = this.level().getBlockState(eyePos);
+        if (eyeBlock.is(Blocks.BUBBLE_COLUMN)) {
+            return true;
+        }
+
+        FluidState eyeFluid = this.level().getFluidState(eyePos);
+        return !eyeFluid.is(FluidTags.WATER) && eyeBlock.getCollisionShape(this.level(), eyePos).isEmpty();
     }
 
     private boolean breakingClamOnLand() {
