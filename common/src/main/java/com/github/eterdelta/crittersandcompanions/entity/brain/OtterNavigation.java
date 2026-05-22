@@ -51,7 +51,8 @@ public class OtterNavigation extends AmphibiousPathNavigation {
     private static final double WATER_EXIT_MAX_HORIZONTAL_SPEED = 0.22D;
     private static final double WATER_EXIT_UPWARD_SPEED = 0.11D;
     private static final double WATER_EXIT_COLLISION_UPWARD_SPEED = 0.18D;
-    private static final int PATHFINDING_CACHE_SIZE = 4096;
+    private static final int PATHFINDING_CACHE_SIZE = 1024;
+    private static final Direction[] HORIZONTAL_DIRECTIONS = {Direction.NORTH, Direction.SOUTH, Direction.EAST, Direction.WEST};
 
     private final Cache<BlockPos, Boolean> cache = CacheBuilder.newBuilder()
             .maximumSize(PATHFINDING_CACHE_SIZE)
@@ -681,7 +682,7 @@ public class OtterNavigation extends AmphibiousPathNavigation {
         BlockPos currentPos = this.mob.blockPosition();
         if (!this.level.getFluidState(currentPos).is(FluidTags.WATER)) return false;
 
-        for (Direction dir : new Direction[]{Direction.NORTH, Direction.SOUTH, Direction.EAST, Direction.WEST}) {
+        for (Direction dir : HORIZONTAL_DIRECTIONS) {
             for (int i = 1; i <= 2; i++) {
                 BlockPos edge = currentPos.relative(dir, i);
                 if (!(this.level.getFluidState(edge).is(FluidTags.WATER) && this.level.getBlockState(edge.above()).isAir() && this.level.getBlockState(edge.above(2)).isAir())) continue;
