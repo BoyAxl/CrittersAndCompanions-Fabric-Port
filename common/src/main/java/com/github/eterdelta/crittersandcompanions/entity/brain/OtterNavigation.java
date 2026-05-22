@@ -43,6 +43,11 @@ public class OtterNavigation extends AmphibiousPathNavigation {
     private static final double SURFACE_SWIM_MIN_UPWARD_SPEED = 0.025D;
     private static final double SURFACE_SWIM_MAX_UPWARD_SPEED = 0.12D;
     private static final double SURFACE_SWIM_MAX_HORIZONTAL_SPEED = 0.15D;
+    private static final double WATER_EXIT_START_DISTANCE = 2.25D;
+    private static final double WATER_EXIT_HORIZONTAL_ACCEL = 0.07D;
+    private static final double WATER_EXIT_MAX_HORIZONTAL_SPEED = 0.22D;
+    private static final double WATER_EXIT_UPWARD_SPEED = 0.11D;
+    private static final double WATER_EXIT_COLLISION_UPWARD_SPEED = 0.18D;
 
     private final Cache<BlockPos, Boolean> cache = CacheBuilder.newBuilder()
             .maximumSize(12000)
@@ -307,6 +312,8 @@ public class OtterNavigation extends AmphibiousPathNavigation {
             // Fallback when the entity collides underwater
             if (this.mob.horizontalCollision && damp()) return;
 
+            this.applyWaterExitAssist(target);
+
             if (this.level.getFluidState(BlockPos.containing(this.mob.getEyePosition())).is(FluidTags.WATER)) {
                 double targetHorizontalDist = target.distanceToSqr(entityPos.x, target.y, entityPos.z);
                 if (target.y > entityPos.y && (!this.surfacePathMode || targetHorizontalDist <= SURFACE_CLOSE_HORIZONTAL_DISTANCE)) {
@@ -383,6 +390,76 @@ public class OtterNavigation extends AmphibiousPathNavigation {
         }
 
         return target;
+    }
+
+    private void applyWaterExitAssist(Vec3 target) {
+        if (this.surfacePathMode) {
+            return;
+        }
+
+        BlockPos landTarget = this.findLandExitTarget(target);
+        if (landTarget == null) {
+            return;
+        }
+
+        double dx = landTarget.getX() + 0.5D - this.mob.getX();
+        double dz = landTarget.getZ() + 0.5D - this.mob.getZ();
+        double horizontalDistanceSqr = dx * dx + dz * dz;
+        if (horizontalDistanceSqr > WATER_EXIT_START_DISTANCE || horizontalDistanceSqr < 1.0E-6D) {
+            return;
+        }
+
+        double horizontalDistance = Math.sqrt(horizontalDistanceSqr);
+        Vec3 movement = this.mob.getDeltaMovement().add(
+                dx / horizontalDistance * WATER_EXIT_HORIZONTAL_ACCEL,
+                0.0D,
+                dz / horizontalDistance * WATER_EXIT_HORIZONTAL_ACCEL
+        );
+
+        double upwardSpeed = this.mob.horizontalCollision ? WATER_EXIT_COLLISION_UPWARD_SPEED : WATER_EXIT_UPWARD_SPEED;
+        movement = new Vec3(movement.x(), Math.max(movement.y(), upwardSpeed), movement.z());
+
+        double horizontalSpeed = Math.sqrt(movement.x() * movement.x() + movement.z() * movement.z());
+        if (horizontalSpeed > WATER_EXIT_MAX_HORIZONTAL_SPEED) {
+            double scale = WATER_EXIT_MAX_HORIZONTAL_SPEED / horizontalSpeed;
+            movement = new Vec3(movement.x() * scale, movement.y(), movement.z() * scale);
+        }
+
+        this.mob.setDeltaMovement(movement);
+        if (this.mob.horizontalCollision && this.jumpCooldown == 0) {
+            this.mob.getJumpControl().jump();
+            this.jumpCooldown = 6;
+        }
+    }
+
+    private BlockPos findLandExitTarget(Vec3 target) {
+        BlockPos targetPos = BlockPos.containing(target);
+        if (this.isLandExitTarget(targetPos)) {
+            return targetPos;
+        }
+
+        BlockPos above = targetPos.above();
+        if (this.isLandExitTarget(above)) {
+            return above;
+        }
+
+        BlockPos below = targetPos.below();
+        if (this.isLandExitTarget(below)) {
+            return below;
+        }
+
+        return null;
+    }
+
+    private boolean isLandExitTarget(BlockPos pos) {
+        BlockState blockState = this.level.getBlockState(pos);
+        BlockState aboveState = this.level.getBlockState(pos.above());
+        BlockState belowState = this.level.getBlockState(pos.below());
+        return this.level.getFluidState(pos).isEmpty()
+                && this.level.getFluidState(pos.below()).isEmpty()
+                && blockState.getCollisionShape(this.level, pos).isEmpty()
+                && aboveState.getCollisionShape(this.level, pos.above()).isEmpty()
+                && !belowState.getCollisionShape(this.level, pos.below()).isEmpty();
     }
 
     private boolean hasReached(Path path, float threshold) {

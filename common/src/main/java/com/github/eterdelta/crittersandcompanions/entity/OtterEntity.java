@@ -118,6 +118,7 @@ public class OtterEntity extends Animal implements GeoEntity {
     private int eatDelay;
     private int floatTime;
     private int rejectedFoodPickupCooldown;
+    private UUID pendingLoveCause;
     private final Set<UUID> rejectedFoodItems = new HashSet<>();
 
     public OtterEntity(EntityType<? extends OtterEntity> entityType, Level level) {
@@ -278,6 +279,7 @@ public class OtterEntity extends Animal implements GeoEntity {
     }
 
     private void breakAndEat(ServerLevel level, ItemStack held) {
+        boolean applyPendingLove = this.isPendingLoveFood(held);
         Vec3 mouthPos = calculateMouthPos();
         level.sendParticles(new ItemParticleOption(ParticleTypes.ITEM, ItemStackTemplate.fromNonEmptyStack(held.copy())), mouthPos.x(), mouthPos.y(), mouthPos.z(), 2, 0.0D, 0.1D, 0.0D, 0.05D);
         var sound = getMainHandItem().is(CACItems.CLAM.get()) && !breakingClamOnLand() ?
@@ -286,6 +288,9 @@ public class OtterEntity extends Animal implements GeoEntity {
         playSound(sound, 1.2F, 1.0F);
         eatOrOpen(level, held);
         setEating(false);
+        if (applyPendingLove) {
+            this.applyPendingLove();
+        }
     }
 
     public ItemStack eatOrOpen(Level level, ItemStack itemStack) {
@@ -374,6 +379,7 @@ public class OtterEntity extends Animal implements GeoEntity {
         this.setFloating(false);
         this.setEating(false);
         this.setNeedsSurface(false);
+        this.pendingLoveCause = null;
         this.getNavigation().stop();
     }
 
@@ -404,7 +410,7 @@ public class OtterEntity extends Animal implements GeoEntity {
             if (!this.isEating() && this.getMainHandItem().isEmpty() && this.getAge() == 0 && this.canFallInLove()) {
                 this.takeFoodFromPlayer(player, handStack);
                 if (!this.level().isClientSide()) {
-                    this.setInLove(player);
+                    this.pendingLoveCause = player.getUUID();
                 }
                 return InteractionResult.SUCCESS;
             }
@@ -419,6 +425,22 @@ public class OtterEntity extends Animal implements GeoEntity {
         this.setItemInHand(InteractionHand.MAIN_HAND, handStack.copyWithCount(1));
         if (!player.getAbilities().instabuild) {
             handStack.shrink(1);
+        }
+    }
+
+    private boolean isPendingLoveFood(ItemStack itemStack) {
+        return this.pendingLoveCause != null
+                && !this.isBaby()
+                && !itemStack.is(CACItems.CLAM.get())
+                && this.isFood(itemStack);
+    }
+
+    private void applyPendingLove() {
+        UUID loveCause = this.pendingLoveCause;
+        this.pendingLoveCause = null;
+        Player player = loveCause == null ? null : this.level().getPlayerByUUID(loveCause);
+        if (player != null && this.canFallInLove()) {
+            this.setInLove(player);
         }
     }
 
