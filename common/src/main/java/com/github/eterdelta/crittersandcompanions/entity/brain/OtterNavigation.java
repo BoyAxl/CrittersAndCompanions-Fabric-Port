@@ -42,7 +42,10 @@ public class OtterNavigation extends AmphibiousPathNavigation {
     private static final double SURFACE_SWIM_MAX_HORIZONTAL_ACCEL = 0.045D;
     private static final double SURFACE_SWIM_MIN_UPWARD_SPEED = 0.025D;
     private static final double SURFACE_SWIM_MAX_UPWARD_SPEED = 0.12D;
+    private static final double SURFACE_SWIM_MIN_DOWNWARD_SPEED = -0.025D;
+    private static final double SURFACE_SWIM_MAX_DOWNWARD_SPEED = -0.12D;
     private static final double SURFACE_SWIM_MAX_HORIZONTAL_SPEED = 0.15D;
+    private static final double SURFACE_ASCENT_CLEARANCE = 0.25D;
     private static final double WATER_EXIT_START_DISTANCE = 2.25D;
     private static final double WATER_EXIT_HORIZONTAL_ACCEL = 0.07D;
     private static final double WATER_EXIT_MAX_HORIZONTAL_SPEED = 0.22D;
@@ -142,6 +145,10 @@ public class OtterNavigation extends AmphibiousPathNavigation {
         this.mob.getMoveControl().setWantedPosition(moveTarget.x(), moveTarget.y(), moveTarget.z(), speed);
     }
 
+    public boolean hasClearWaterPathTo(Vec3 target) {
+        return this.catchF(this.getTempMobPos(), target);
+    }
+
     public SurfacePathProgress updateSurfacePathProgress(Path path, Vec3 steeringTarget, Vec3 finalTarget) {
         double dx = steeringTarget.x() - this.mob.getX();
         double dy = steeringTarget.y() - this.mob.getEyePosition().y();
@@ -156,7 +163,9 @@ public class OtterNavigation extends AmphibiousPathNavigation {
 
         if (path != null) {
             int pathNodeIndex = path.getNextNodeIndex();
-            if (pathNodeIndex != this.lastSurfacePathNodeIndex) {
+            if (this.surfacePathMode && this.mob.horizontalCollision && horizontalDist > SURFACE_CLOSE_HORIZONTAL_DISTANCE) {
+                this.surfacePathStuckTicks += 4;
+            } else if (pathNodeIndex != this.lastSurfacePathNodeIndex) {
                 this.surfacePathStuckTicks = 0;
                 this.lastSurfacePathNodeIndex = pathNodeIndex;
             } else if (horizontalDist <= SURFACE_CLOSE_HORIZONTAL_DISTANCE && progressDist > this.lastSurfacePathDist - SURFACE_HORIZONTAL_PROGRESS_EPSILON) {
@@ -186,6 +195,8 @@ public class OtterNavigation extends AmphibiousPathNavigation {
         double dy = wantedPosition.y() - this.mob.getY();
         double dz = wantedPosition.z() - this.mob.getZ();
         double horizontalDistance = Math.sqrt(dx * dx + dz * dz);
+        boolean lateralSurfacePath = this.surfacePathMode && horizontalDistance * horizontalDistance > SURFACE_CLOSE_HORIZONTAL_DISTANCE;
+        boolean canAscend = !lateralSurfacePath || this.hasAscentClearance();
 
         Vec3 movement = this.mob.getDeltaMovement();
         if (horizontalDistance > 1.0E-4D) {
@@ -193,7 +204,12 @@ public class OtterNavigation extends AmphibiousPathNavigation {
             movement = movement.add(dx / horizontalDistance * accel, 0.0D, dz / horizontalDistance * accel);
         }
 
-        if (dy > 0.03D) {
+        if (dy < -0.03D) {
+            double downwardSpeed = Mth.clamp(dy * 0.08D, SURFACE_SWIM_MAX_DOWNWARD_SPEED, SURFACE_SWIM_MIN_DOWNWARD_SPEED);
+            movement = new Vec3(movement.x(), Math.min(movement.y(), downwardSpeed), movement.z());
+        } else if (!canAscend) {
+            movement = new Vec3(movement.x(), Math.min(movement.y(), 0.0D), movement.z());
+        } else if (dy > 0.03D) {
             double upwardSpeed = Mth.clamp(dy * 0.08D, SURFACE_SWIM_MIN_UPWARD_SPEED, SURFACE_SWIM_MAX_UPWARD_SPEED);
             movement = new Vec3(movement.x(), Math.max(movement.y(), upwardSpeed), movement.z());
         } else if (dy > -0.25D) {
@@ -307,10 +323,10 @@ public class OtterNavigation extends AmphibiousPathNavigation {
 
             if (this.level.getFluidState(BlockPos.containing(this.mob.getEyePosition())).is(FluidTags.WATER)) {
                 double targetHorizontalDist = target.distanceToSqr(entityPos.x, target.y, entityPos.z);
-                if (target.y > entityPos.y && (!this.surfacePathMode || targetHorizontalDist <= SURFACE_CLOSE_HORIZONTAL_DISTANCE)) {
+                if (target.y > entityPos.y && (!this.surfacePathMode || targetHorizontalDist <= SURFACE_CLOSE_HORIZONTAL_DISTANCE) && this.hasAscentClearance()) {
                     // Forces a push to the higher Ys when the next node is in a higher Y than the current  one
                     this.mob.setDeltaMovement(this.mob.getDeltaMovement().add(0.0D, 0.03D, 0.0D));
-                } else if (this.surfacePathMode && targetHorizontalDist > SURFACE_CLOSE_HORIZONTAL_DISTANCE) {
+                } else if (this.surfacePathMode && targetHorizontalDist > SURFACE_CLOSE_HORIZONTAL_DISTANCE && this.hasAscentClearance()) {
                     Vec3 movement = this.mob.getDeltaMovement();
                     if (movement.y() < SURFACE_LATERAL_MIN_UPWARD_SPEED) {
                         this.mob.setDeltaMovement(movement.x(), SURFACE_LATERAL_MIN_UPWARD_SPEED, movement.z());
@@ -374,13 +390,26 @@ public class OtterNavigation extends AmphibiousPathNavigation {
 
     private Vec3 adjustSurfaceSteeringTarget(Vec3 target) {
         double dx = target.x - this.mob.getX();
+        double dy = target.y - this.mob.getY();
         double dz = target.z - this.mob.getZ();
         if (this.surfacePathMode && this.mob.isInWater() && dx * dx + dz * dz > SURFACE_CLOSE_HORIZONTAL_DISTANCE) {
+            if (dy < -0.1D) {
+                return target;
+            }
+
+            if (!this.hasAscentClearance()) {
+                return new Vec3(target.x, Math.min(target.y, this.mob.getY()), target.z);
+            }
+
             double y = Math.max(this.surfacePathStartY, this.mob.getY() + SURFACE_LATERAL_Y_BIAS);
             return new Vec3(target.x, y, target.z);
         }
 
         return target;
+    }
+
+    private boolean hasAscentClearance() {
+        return this.level.noCollision(this.mob, this.mob.getBoundingBox().move(0.0D, SURFACE_ASCENT_CLEARANCE, 0.0D));
     }
 
     private void applyWaterExitAssist(Vec3 target) {

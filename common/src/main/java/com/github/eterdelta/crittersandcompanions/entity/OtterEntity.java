@@ -112,6 +112,7 @@ public class OtterEntity extends Animal implements GeoEntity {
     private static final double SURFACE_VERTICAL_ASCENT_HORIZONTAL_DISTANCE = 1.0D;
     private static final float SURFACE_SWIM_MIN_X_ROT = -10.0F;
     private static final float SURFACE_SWIM_MAX_X_ROT = 0.0F;
+    private static final float SURFACE_SWIM_MAX_DESCENT_X_ROT = 25.0F;
     private static final int REJECTED_FOOD_PICKUP_COOLDOWN = 200;
     private static final double SEARCH_FOOD_RANGE = 8.0D;
     private static final int SEARCH_FOOD_PATH_RECALC_INTERVAL = 5;
@@ -1280,7 +1281,7 @@ public class OtterEntity extends Animal implements GeoEntity {
             boolean navDone = OtterEntity.this.getNavigation().isDone();
             double basePush = 0.02D;
             double surfaceY = OtterEntity.this.findWaterSurfaceYNearBody();
-            boolean nearSurfaceTarget = finalHoriz <= 2.25D && !Double.isNaN(surfaceY);
+            boolean nearSurfaceTarget = finalHoriz <= 2.25D && !Double.isNaN(surfaceY) && navigation.hasClearWaterPathTo(this.targetPos);
             boolean followingPath = this.targetPath != null && !this.targetPath.isDone() && !navDone && !nearSurfaceTarget;
             double assistDy = nearSurfaceTarget ? finalDy : dy;
             double assistHoriz = nearSurfaceTarget ? finalHoriz : horiz;
@@ -1472,6 +1473,10 @@ public class OtterEntity extends Animal implements GeoEntity {
     private float getSurfacingXRot(float xRot, double dy, double horizontalDistance) {
         if (dy > 0.0D && horizontalDistance <= SURFACE_VERTICAL_ASCENT_HORIZONTAL_DISTANCE) {
             return 0.0F;
+        }
+
+        if (dy < -0.1D) {
+            return Mth.clamp(xRot, SURFACE_SWIM_MAX_X_ROT, SURFACE_SWIM_MAX_DESCENT_X_ROT);
         }
 
         return Mth.clamp(xRot, SURFACE_SWIM_MIN_X_ROT, SURFACE_SWIM_MAX_X_ROT);
