@@ -2,8 +2,10 @@ plugins {
     id 'net.fabricmc.fabric-loom' version "${loom_version}"
 }
 
+def releaseVersion = System.getenv('GITHUB_TAG')?.replaceFirst(/^v/, '') ?: mod_version
+
 group = maven_group
-version = mod_version
+version = releaseVersion
 
 base {
     archivesName = mod_id
@@ -11,8 +13,8 @@ base {
 
 java {
     withSourcesJar()
-    sourceCompatibility = JavaVersion.VERSION_25
-    targetCompatibility = JavaVersion.VERSION_25
+    sourceCompatibility = JavaVersion.toVersion(java_version)
+    targetCompatibility = JavaVersion.toVersion(java_version)
 }
 
 sourceSets {
@@ -36,19 +38,16 @@ repositories {
     }
 
     maven {
+        name = 'Modrinth'
+        url = 'https://api.modrinth.com/maven'
+    }
+
+    maven {
         url = 'https://raw.githubusercontent.com/Fuzss/modresources/main/maven/'
         content {
             includeGroup 'fuzs.forgeconfigapiport'
             includeGroup 'net.neoforged.fancymodloader'
             includeGroup 'net.neoforged.neoforge'
-        }
-    }
-
-    maven {
-        name = 'CurseMaven'
-        url = 'https://cursemaven.com'
-        content {
-            includeGroup 'curse.maven'
         }
     }
 
@@ -61,23 +60,23 @@ dependencies {
     implementation "net.fabricmc.fabric-api:fabric-api:${fabric_api_version}"
     implementation "fuzs.forgeconfigapiport:forgeconfigapiport-fabric:${forge_config_port_version}"
     include "fuzs.forgeconfigapiport:forgeconfigapiport-fabric:${forge_config_port_version}"
-    implementation "curse.maven:geckolib-388172:${geckolib_curseforge_file_id}"
+    implementation "maven.modrinth:geckolib:${geckolib_version}"
 }
 
 tasks.named('processResources', ProcessResources).configure {
     includeEmptyDirs = false
 
     var replaceProperties = [
-            minecraft_version    : minecraft_version,
-            fabric_loader_version: fabric_loader_version,
-            fabric_api_version   : fabric_api_version,
-            java_version         : java_version,
-            mod_id               : mod_id,
-            mod_name             : mod_name,
-            mod_author           : mod_author,
-            mod_version          : mod_version,
-            geckolib_version     : geckolib_version,
-            forge_config_port_version: forge_config_port_version,
+            minecraft_version_range    : minecraft_version_range,
+            fabric_loader_version_range: fabric_loader_version_range,
+            fabric_api_version_range   : fabric_api_version_range,
+            java_version               : java_version,
+            mod_id                     : mod_id,
+            mod_name                   : mod_name,
+            mod_author                 : mod_author,
+            mod_version                : project.version,
+            geckolib_version           : geckolib_version,
+            forge_config_port_version  : forge_config_port_version,
     ]
 
     inputs.properties replaceProperties
@@ -89,5 +88,5 @@ tasks.named('processResources', ProcessResources).configure {
 
 tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
-    options.release = 25
+    options.release = java_version.toInteger()
 }

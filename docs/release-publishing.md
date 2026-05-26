@@ -30,10 +30,10 @@ Do not put the token in a commit, release body, Discord message, or issue.
 
 1. Update `mod_version` in `gradle.properties`.
 
-For example, if the previous CurseForge file was `crittersandcompanions-26.1.2-0.1.0-fabric.jar`, use:
+For example, if the previous CurseForge file was `crittersandcompanions-26.1.x-0.1.5-fabric.jar`, use:
 
 ```properties
-mod_version=26.1.2-0.1.1-fabric
+mod_version=26.1.x-0.1.6-fabric
 ```
 
 2. Commit and push the change.
@@ -41,13 +41,13 @@ mod_version=26.1.2-0.1.1-fabric
 4. Create a new tag, for example:
 
 ```text
-v26.1.2-0.1.1-fabric
+v26.1.x-0.1.6-fabric
 ```
 
 5. Set the release title, for example:
 
 ```text
-Critters and Companions 26.1.2 - 0.1.1 Fabric (Unofficial Port)
+Critters and Companions 26.1.x - 0.1.6 Fabric (Unofficial Port)
 ```
 
 6. Write the changelog in the release body.
