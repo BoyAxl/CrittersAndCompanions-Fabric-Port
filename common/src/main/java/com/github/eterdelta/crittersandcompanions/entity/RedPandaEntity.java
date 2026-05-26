@@ -56,7 +56,6 @@ import com.geckolib.animatable.instance.AnimatableInstanceCache;
 import com.geckolib.animatable.manager.AnimatableManager;
 import com.geckolib.animation.AnimationController;
 import com.geckolib.animation.state.AnimationTest;
-import com.geckolib.animation.object.LoopType;
 import com.geckolib.animation.object.PlayState;
 import com.geckolib.animation.RawAnimation;
 import com.geckolib.util.GeckoLibUtil;
@@ -65,6 +64,7 @@ public class RedPandaEntity extends TamableAnimal implements GeoEntity {
 
     private static final TagKey<Item> TEMPT_TAG = TagKey.create(Registries.ITEM, CrittersAndCompanions.createId("red_panda_tempt_items"));
     private static final TagKey<Item> FOODS_TAG = TagKey.create(Registries.ITEM, CrittersAndCompanions.createId("red_panda_food"));
+    private static final RawAnimation ALERT_ANIMATION = RawAnimation.begin().thenPlayAndHold("angry");
 
     protected static final List<EntityType<? extends Mob>> SCAREABLES = new ArrayList<>(Arrays.asList(
             EntityType.BEE,
@@ -216,7 +216,7 @@ public class RedPandaEntity extends TamableAnimal implements GeoEntity {
 
     private PlayState predicate(AnimationTest<?> event) {
         if (this.isAlert()) {
-            event.controller().setAnimation(RawAnimation.begin().then("angry", LoopType.PLAY_ONCE));
+            event.controller().setAnimation(ALERT_ANIMATION);
         } else if (this.isInSittingPose()) {
             event.controller().setAnimation(RawAnimation.begin().thenLoop("sit"));
         } else if (this.isSleeping()) {
