@@ -1,6 +1,27 @@
-name: Publish CurseForge Release
+name: Publish Release
 
 on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag to publish, for example v26.1.x-0.1.6-fabric.
+        required: true
+      name:
+        description: Version display name. Defaults to the tag when empty.
+        required: false
+      changelog:
+        description: Version changelog. Used only for manual publishing.
+        required: false
+      publish_curseforge:
+        description: Also publish to CurseForge during a manual run.
+        required: true
+        default: false
+        type: boolean
+      publish_modrinth:
+        description: Publish to Modrinth during a manual run.
+        required: true
+        default: true
+        type: boolean
   release:
     types: [published]
 
@@ -11,6 +32,11 @@ jobs:
   publish:
     name: Build and publish
     runs-on: ubuntu-latest
+    env:
+      MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
+      RELEASE_TAG: ${{ github.event.release.tag_name || inputs.tag || github.ref_name }}
+      RELEASE_NAME: ${{ github.event.release.name || inputs.name || github.event.release.tag_name || inputs.tag || github.ref_name }}
+      RELEASE_CHANGELOG: ${{ github.event.release.body || inputs.changelog || '' }}
 
     steps:
       - name: Checkout
@@ -24,10 +50,11 @@ jobs:
 
       - name: Build
         env:
-          GITHUB_TAG: ${{ github.event.release.tag_name }}
+          GITHUB_TAG: ${{ env.RELEASE_TAG }}
         run: ./gradlew build
 
       - name: Publish to CurseForge
+        if: ${{ github.event_name == 'release' || inputs.publish_curseforge }}
         uses: Kir-Antipov/mc-publish@v3.3
         with:
           curseforge-id: 1547290
@@ -36,10 +63,10 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
           files: build/libs/!(*-@(dev|sources|javadoc|javadocs)).jar
-          name: ${{ github.event.release.name }}
-          version: ${{ github.event.release.tag_name }}
+          name: ${{ env.RELEASE_NAME }}
+          version: ${{ env.RELEASE_TAG }}
           version-type: release
-          changelog: ${{ github.event.release.body }}
+          changelog: ${{ env.RELEASE_CHANGELOG }}
 
           loaders: fabric
           game-versions: |
@@ -51,3 +78,30 @@ jobs:
           curseforge-dependencies: |
             306612(required)
             388172(required)
+
+      - name: Publish to Modrinth
+        if: ${{ env.MODRINTH_TOKEN != '' && (github.event_name == 'release' || inputs.publish_modrinth) }}
+        uses: Kir-Antipov/mc-publish@v3.3
+        with:
+          modrinth-id: shNmXuqa
+          modrinth-token: ${{ env.MODRINTH_TOKEN }}
+
+          files: build/libs/!(*-@(dev|sources|javadoc|javadocs)).jar
+          name: ${{ env.RELEASE_NAME }}
+          version: ${{ env.RELEASE_TAG }}
+          version-type: release
+          changelog: ${{ env.RELEASE_CHANGELOG }}
+
+          loaders: fabric
+          game-versions: |
+            26.1
+            26.1.1
+            26.1.2
+          java: 25
+
+          modrinth-featured: true
+          modrinth-unfeature-mode: none
+          modrinth-dependencies: |
+            fabric-api(required)
+            geckolib(required)
+            forge-config-api-port(required)
