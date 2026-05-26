@@ -1,5 +1,6 @@
 package com.github.eterdelta.crittersandcompanions;
 
+import com.github.eterdelta.crittersandcompanions.client.model.GrapplingHookModel;
 import com.github.eterdelta.crittersandcompanions.client.model.geo.DragonflyModel;
 import com.github.eterdelta.crittersandcompanions.client.model.geo.DumboOctopusModel;
 import com.github.eterdelta.crittersandcompanions.client.model.geo.JumpingSpiderModel;
@@ -39,5 +40,6 @@ public class CrittersAndCompanionsClient {
     }
 
     public static void registerEntityLayers(BiConsumer<ModelLayerLocation, Supplier<LayerDefinition>> event) {
+        event.accept(GrapplingHookRenderer.LAYER_LOCATION, GrapplingHookModel::createLayer);
     }
 }

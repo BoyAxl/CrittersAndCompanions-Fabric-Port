@@ -21,7 +21,6 @@ sourceSets {
             srcDir 'common/src/main/java'
             srcDir 'fabric/src/main/java'
             exclude 'com/github/eterdelta/crittersandcompanions/client/model/BubbleModel.java'
-            exclude 'com/github/eterdelta/crittersandcompanions/client/model/GrapplingHookModel.java'
             exclude 'com/github/eterdelta/crittersandcompanions/client/renderer/BubbleLayer.java'
             exclude 'com/github/eterdelta/crittersandcompanions/client/renderer/SilkLeashRenderer.java'
             exclude 'com/github/eterdelta/crittersandcompanions/compat/TrinketsCompat.java'
