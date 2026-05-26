@@ -12,8 +12,6 @@ import net.neoforged.neoforge.common.ModConfigSpec;
 
 public class FabricCommonConfig extends CACCommonConfig {
 
-    private static final Map<ResourceKey<? extends EntityType<?>>, CACWorldGen.SpawnValues> SPAWN_DEFAULT_VALUES = new HashMap<>();
-
     private final Map<ResourceKey<? extends EntityType<?>>, Supplier<CACWorldGen.SpawnValues>> spawnValues = new HashMap<>();
 
     private void registerSpawns(ModConfigSpec.Builder builder, ResourceKey<? extends EntityType<?>> key, CACWorldGen.SpawnValues defaultValues) {
@@ -39,27 +37,14 @@ public class FabricCommonConfig extends CACCommonConfig {
 
         registerSpawns(builder, CACEntities.LEAF_INSECT.getKey(), new CACWorldGen.SpawnValues(14, 1, 1));
         registerSpawns(builder, CACEntities.RED_PANDA.getKey(), new CACWorldGen.SpawnValues(8, 1, 2));
-        registerSpawns(builder, CACEntities.JUMPING_SPIDER.getKey(), new CACWorldGen.SpawnValues(2, 1, 1));
-        registerSpawns(builder, CACEntities.LEAF_INSECT.getKey(), new CACWorldGen.SpawnValues(14, 1, 1));
-        registerSpawns(builder, CACEntities.FERRET.getKey(), new CACWorldGen.SpawnValues(3, 2, 3));
-        registerSpawns(builder, CACEntities.JUMPING_SPIDER.getKey(), new CACWorldGen.SpawnValues(2, 1, 1));
-        registerSpawns(builder, CACEntities.JUMPING_SPIDER.getKey(), new CACWorldGen.SpawnValues(2, 1, 1));
-        registerSpawns(builder, CACEntities.SEA_BUNNY.getKey(), new CACWorldGen.SpawnValues(16, 1, 2));
-        registerSpawns(builder, CACEntities.DUMBO_OCTOPUS.getKey(), new CACWorldGen.SpawnValues(4, 1, 1));
-        registerSpawns(builder, CACEntities.SEA_BUNNY.getKey(), new CACWorldGen.SpawnValues(16, 1, 2));
-        registerSpawns(builder, CACEntities.DUMBO_OCTOPUS.getKey(), new CACWorldGen.SpawnValues(4, 1, 1));
+        registerSpawns(builder, CACEntities.JUMPING_SPIDER.getKey(), new CACWorldGen.SpawnValues(6, 1, 1));
         registerSpawns(builder, CACEntities.FERRET.getKey(), new CACWorldGen.SpawnValues(4, 2, 3));
-        registerSpawns(builder, CACEntities.FERRET.getKey(), new CACWorldGen.SpawnValues(4, 2, 3));
+        registerSpawns(builder, CACEntities.SEA_BUNNY.getKey(), new CACWorldGen.SpawnValues(16, 1, 4));
+        registerSpawns(builder, CACEntities.DUMBO_OCTOPUS.getKey(), new CACWorldGen.SpawnValues(6, 1, 1));
         registerSpawns(builder, CACEntities.OTTER.getKey(), new CACWorldGen.SpawnValues(1, 3, 5));
         registerSpawns(builder, CACEntities.KOI_FISH.getKey(), new CACWorldGen.SpawnValues(4, 2, 5));
         registerSpawns(builder, CACEntities.DRAGONFLY.getKey(), new CACWorldGen.SpawnValues(7, 1, 1));
         registerSpawns(builder, CACEntities.SHIMA_ENAGA.getKey(), new CACWorldGen.SpawnValues(3, 2, 3));
-        registerSpawns(builder, CACEntities.SEA_BUNNY.getKey(), new CACWorldGen.SpawnValues(32, 1, 4));
-        registerSpawns(builder, CACEntities.DUMBO_OCTOPUS.getKey(), new CACWorldGen.SpawnValues(8, 1, 1));
-        registerSpawns(builder, CACEntities.SEA_BUNNY.getKey(), new CACWorldGen.SpawnValues(16, 1, 4));
-        registerSpawns(builder, CACEntities.DUMBO_OCTOPUS.getKey(), new CACWorldGen.SpawnValues(6, 1, 1));
-        registerSpawns(builder, CACEntities.SEA_BUNNY.getKey(), new CACWorldGen.SpawnValues(16, 1, 4));
-        registerSpawns(builder, CACEntities.DUMBO_OCTOPUS.getKey(), new CACWorldGen.SpawnValues(6, 1, 1));
 
         builder.pop();
     }
