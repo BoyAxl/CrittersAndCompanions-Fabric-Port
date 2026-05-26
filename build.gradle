@@ -20,16 +20,11 @@ sourceSets {
         java {
             srcDir 'common/src/main/java'
             srcDir 'fabric/src/main/java'
-            exclude 'com/github/eterdelta/crittersandcompanions/client/model/BubbleModel.java'
-            exclude 'com/github/eterdelta/crittersandcompanions/client/renderer/BubbleLayer.java'
-            exclude 'com/github/eterdelta/crittersandcompanions/client/renderer/SilkLeashRenderer.java'
-            exclude 'com/github/eterdelta/crittersandcompanions/compat/TrinketsCompat.java'
-            exclude 'com/github/eterdelta/crittersandcompanions/mixin/ItemPropertiesAccessor.java'
-            exclude 'com/github/eterdelta/crittersandcompanions/mixin/LivingEntityRendererMixin.java'
         }
         resources {
             srcDir 'common/src/main/resources'
             srcDir 'fabric/src/main/resources'
+            exclude 'assets/crittersandcompanions/models/entity/*.bbmodel'
         }
     }
 }
@@ -70,6 +65,8 @@ dependencies {
 }
 
 tasks.named('processResources', ProcessResources).configure {
+    includeEmptyDirs = false
+
     var replaceProperties = [
             minecraft_version    : minecraft_version,
             fabric_loader_version: fabric_loader_version,
