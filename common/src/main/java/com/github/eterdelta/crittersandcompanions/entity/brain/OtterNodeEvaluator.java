@@ -30,15 +30,19 @@ public class OtterNodeEvaluator extends AmphibiousNodeEvaluator {
         double $$7 = this.getFloorLevel(new BlockPos($$1.x, $$1.y, $$1.z));
         Node $$8 = this.findAcceptedNode($$1.x, $$1.y + 1, $$1.z, Math.max(0, yRange - 1), $$7, Direction.UP, pathType);
         Node $$9 = this.findAcceptedNode($$1.x, $$1.y - 1, $$1.z, yRange, $$7, Direction.DOWN, pathType);
-        if (this.isNeighborValid($$8, $$1)) {
+        if (this.isWaterNeighborValid($$8, $$1)) {
             nodes[walkableNeighbors++] = $$8;
         }
 
-        if (this.isNeighborValid($$9, $$1) && pathType != PathType.TRAPDOOR) {
+        if (this.isWaterNeighborValid($$9, $$1) && pathType != PathType.TRAPDOOR) {
             nodes[walkableNeighbors++] = $$9;
         }
 
         return walkableNeighbors;
+    }
+
+    private boolean isWaterNeighborValid(Node node, Node parent) {
+        return this.isNeighborValid(node, parent) && node.type == PathType.WATER;
     }
 
 }

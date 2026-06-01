@@ -1,9 +1,6 @@
 package com.github.eterdelta.crittersandcompanions.entity.brain;
 
-import com.google.common.cache.Cache;
-import com.google.common.cache.CacheBuilder;
 import java.util.Set;
-import java.util.concurrent.TimeUnit;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.tags.FluidTags;
@@ -13,7 +10,6 @@ import net.minecraft.world.entity.ai.navigation.AmphibiousPathNavigation;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.pathfinder.Path;
-import net.minecraft.world.level.pathfinder.PathComputationType;
 import net.minecraft.world.level.pathfinder.PathFinder;
 import net.minecraft.world.level.pathfinder.PathType;
 import net.minecraft.world.phys.Vec3;
@@ -51,13 +47,7 @@ public class OtterNavigation extends AmphibiousPathNavigation {
     private static final double WATER_EXIT_MAX_HORIZONTAL_SPEED = 0.22D;
     private static final double WATER_EXIT_UPWARD_SPEED = 0.11D;
     private static final double WATER_EXIT_COLLISION_UPWARD_SPEED = 0.18D;
-    private static final int PATHFINDING_CACHE_SIZE = 1024;
     private static final Direction[] HORIZONTAL_DIRECTIONS = {Direction.NORTH, Direction.SOUTH, Direction.EAST, Direction.WEST};
-
-    private final Cache<BlockPos, Boolean> cache = CacheBuilder.newBuilder()
-            .maximumSize(PATHFINDING_CACHE_SIZE)
-            .expireAfterAccess(5, TimeUnit.SECONDS)
-            .build();
 
     private Vec3 lastCheckPos = Vec3.ZERO;
     private int lastCheckTick = 0;
@@ -248,6 +238,11 @@ public class OtterNavigation extends AmphibiousPathNavigation {
         // If there is no path
         if (this.path == null || this.path.isDone()) return;
 
+        if (!this.mob.isInWater()) {
+            super.followThePath();
+            return;
+        }
+
         Vec3 entityPos = this.getTempMobPos();
         int nextIdx = path.getNextNodeIndex();
         double yFloor = Math.floor(entityPos.y);
@@ -270,7 +265,7 @@ public class OtterNavigation extends AmphibiousPathNavigation {
         }
 
         // If the entity is very close to the next node (or on an elevation change), advance the path index
-        float reachThreshold = this.surfacePathMode && this.mob.isInWater() ? 1.0F : 0.8F;
+        float reachThreshold = this.surfacePathMode ? 1.0F : 0.8F;
         if (hasReached(path, reachThreshold) || (isAtElevationChange(path) && hasReached(path, 1.0F))) {
             path.advance();
         }
@@ -282,38 +277,8 @@ public class OtterNavigation extends AmphibiousPathNavigation {
         Vec3 target = this.surfacePathMode ? this.adjustSurfaceSteeringTarget(path.getNextEntityPos(this.mob)) : path.getNextEntityPos(this.mob);
         this.mob.getMoveControl().setWantedPosition(target.x, target.y, target.z, this.speedModifier);
 
-        // Jump fallback (if the entity is stuck)
         if (jumpCooldown > 0) {
             jumpCooldown--;
-        }
-
-        if (!this.mob.isInWater() && this.mob.onGround() && this.mob.horizontalCollision && jumpCooldown == 0) {
-            // Direction toward the node. getDirection can disagree with the actual path heading.
-            Vec3 dir = new Vec3(target.x - this.mob.getX(), 0.0, target.z - this.mob.getZ());
-            if (dir.lengthSqr() > 1.0E-4) dir = dir.normalize();
-
-            // Cell right in front of the entity
-            double reach = this.mob.getBbWidth() * 0.5D + 0.6D;
-            BlockPos front = BlockPos.containing(this.mob.getX() + dir.x * reach, Math.floor(this.mob.getY()), this.mob.getZ() + dir.z * reach);
-
-            // Real height of the block (solid) in front of the entity
-            VoxelShape shape =  this.level.getBlockState(front).getCollisionShape(this.level, front);
-            double h = shape.isEmpty() ? 0.0D : shape.max(Direction.Axis.Y);
-
-            // How much free space is above the entity.
-            BlockPos head = front.above();
-            boolean headClear = this.level.getBlockState(head).getCollisionShape(this.level, head).isEmpty();
-            boolean head2Clear = this.level.getBlockState(head.above()).getCollisionShape(this.level, head.above()).isEmpty();
-
-            // Only jump if the obstacle is "jumpable" and theres space above
-            if (h > 0.01D && h <= 1.2D && headClear && head2Clear) {
-                this.mob.getJumpControl().jump();
-                jumpCooldown = 6;
-            } else {
-                // Fallback sidestep, so it can go around tight corners.
-                tryPerpendicularSidestep(dir);
-            }
-
         }
 
         if (this.mob.isInWater()) {
@@ -573,7 +538,6 @@ public class OtterNavigation extends AmphibiousPathNavigation {
 
         var pos = new BlockPos.MutableBlockPos();
         float t = 0.0F;
-        boolean waterPath = this.mob.isInWater();
 
         // March along the ray until we exceed the target distance
         while (t <= maxT) {
@@ -603,22 +567,7 @@ public class OtterNavigation extends AmphibiousPathNavigation {
 
             pos.set(currentX, currentY, currentZ);
             BlockState blockState = this.level.getBlockState(pos);
-            boolean isPathfindable;
-            if (waterPath) {
-                isPathfindable = this.isClearWaterPathCell(pos, blockState);
-            } else {
-                var immutablePos = pos.immutable();
-
-                // Caches nodes to avoid recomputing them again
-                Boolean cachedPathfindable = cache.getIfPresent(immutablePos);
-                if (cachedPathfindable == null) {
-                    isPathfindable = blockState.isPathfindable(PathComputationType.LAND);
-                    cache.put(immutablePos, isPathfindable);
-                } else {
-                    isPathfindable = cachedPathfindable;
-                }
-            }
-            if (!isPathfindable)
+            if (!this.isClearWaterPathCell(pos, blockState))
                 return false;
 
             // Also rejects dangerous or blocked path types.
