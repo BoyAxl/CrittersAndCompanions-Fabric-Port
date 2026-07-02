@@ -1,7 +1,9 @@
 package com.github.eterdelta.crittersandcompanions;
 
+import com.github.eterdelta.crittersandcompanions.config.CACSpawnConfig;
 import com.github.eterdelta.crittersandcompanions.handler.PlayerHandler;
 import com.github.eterdelta.crittersandcompanions.platform.FabricConfigs;
+import com.github.eterdelta.crittersandcompanions.platform.Services;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.event.player.UseEntityCallback;
 import net.fabricmc.api.ModInitializer;
@@ -28,6 +30,7 @@ public class CrittersAndCompanionsFabric implements ModInitializer {
         EntityTrackingEvents.START_TRACKING.register(PlayerHandler::onPlayerStartTracking);
         EntityTrackingEvents.STOP_TRACKING.register(PlayerHandler::onPlayerStopTracking);
 
+        CACSpawnConfig.load(Services.PLATFORM.getConfigDir());
         FabricConfigs.register();
         CACWorldGen.register();
         CACLootModifiers.register();

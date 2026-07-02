@@ -1,6 +1,7 @@
 package com.github.eterdelta.crittersandcompanions.platform.service;
 
 import com.github.eterdelta.crittersandcompanions.platform.RegistryHelper;
+import java.nio.file.Path;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
 import net.minecraft.core.Holder;
@@ -21,6 +22,8 @@ public interface IPlatformHelper {
     Holder<Attribute> getSwimSpeedAttribute();
 
     SpawnEggItem createSpawnEgg(Supplier<? extends EntityType<? extends Mob>> entityType, int primary, int secondary, Item.Properties properties);
+
+    Path getConfigDir();
 
     Stream<ItemStack> getAdditionalEquipment(Player player);
 

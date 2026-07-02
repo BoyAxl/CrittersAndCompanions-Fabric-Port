@@ -1,8 +1,10 @@
 package com.github.eterdelta.crittersandcompanions.platform;
 
 import com.github.eterdelta.crittersandcompanions.platform.service.IPlatformHelper;
+import java.nio.file.Path;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
+import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.core.Holder;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.Registries;
@@ -36,6 +38,11 @@ public class FabricPlatformHelper implements IPlatformHelper {
     @Override
     public SpawnEggItem createSpawnEgg(Supplier<? extends EntityType<? extends Mob>> entityType, int primary, int secondary, Item.Properties properties) {
         return new SpawnEggItem(properties.spawnEgg(entityType.get()));
+    }
+
+    @Override
+    public Path getConfigDir() {
+        return FabricLoader.getInstance().getConfigDir();
     }
 
     @Override

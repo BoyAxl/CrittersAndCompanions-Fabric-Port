@@ -1,5 +1,17 @@
 # Changelog
 
+## v26.1.2-0.2.1-fabric - Unreleased
+
+### Added
+
+- Added `crittersandcompanions-spawns.toml`, matching the official configurable spawn file with biome/tag, weight, min, and max entries per entity.
+
+### Changed
+
+- Natural spawn registration now reads from the dedicated spawn config instead of hardcoded Fabric entries.
+- Updated default spawn entries to match the official 1.21.1 per-biome values where the old Fabric port used flatter defaults.
+- Migrates customized legacy `spawn_rates` values from `crittersandcompanions-common.toml` when generating the new spawn config for the first time.
+
 ## v26.1.2-0.2.0-fabric - 2026-07-02
 
 ### Added
@@ -7,7 +19,7 @@
 - Ported the new Critters and Companions 1.21.1 content into the Fabric 26.1.x port.
 - Added ladybugs, roly-polies, snails, stag beetles, stick bugs, weevils, mud balls, acorns, the acorn hat, snail slime, and roly-poly chest support.
 - Added natural spawns for the new insects in forest and lush biomes, matching the official 1.21.1 defaults.
-- Added updated jumping spider variants and jukebox dancing behavior.
+- Added updated jumping spider variants.
 - Added updated item models, spawn eggs, textures, animations, sounds, tags, recipes, loot hooks, and resource-pack assets for the new content.
 
 ### Fixed
