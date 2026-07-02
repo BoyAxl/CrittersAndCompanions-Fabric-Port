@@ -11,6 +11,15 @@
 - Natural spawn registration now reads from the dedicated spawn config instead of hardcoded Fabric entries.
 - Updated default spawn entries to match the official 1.21.1 per-biome values where the old Fabric port used flatter defaults.
 - Migrates customized legacy `spawn_rates` values from `crittersandcompanions-common.toml` when generating the new spawn config for the first time.
+- Increased ferret walk speed to match the official 1.21.1 behavior.
+
+### Fixed
+
+- Added the missing Shima Enaga spawn placement registration.
+- Fixed Koi Fish and baby Roly-Poly texture z-fighting on flat model planes.
+- Fixed Shima Enaga wing texture z-fighting on GeckoLib 5.
+- Renamed the legacy necklace config typo from `swim_sped` to `swim_speed`, preserving customized existing values.
+- Aligned subtitle keys with the official `entity.*` translation format so sound subtitles resolve correctly.
 
 ## v26.1.2-0.2.0-fabric - 2026-07-02
 

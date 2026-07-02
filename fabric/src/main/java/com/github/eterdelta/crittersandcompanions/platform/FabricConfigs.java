@@ -13,6 +13,7 @@ public class FabricConfigs implements IConfigs {
     private static final Pair<CACCommonConfig, ModConfigSpec> COMMON = new ModConfigSpec.Builder().configure(CACCommonConfig::new);
 
     public static void register() {
+        CACCommonConfig.migrateLegacyConfig(Services.PLATFORM.getConfigDir());
         ConfigRegistry.INSTANCE.register(CrittersAndCompanions.MODID, ModConfig.Type.COMMON, COMMON.getRight());
     }
 
