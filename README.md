@@ -67,7 +67,7 @@ build/libs/
 
 The first public release of this unofficial port is available on GitHub:
 
-- `v26.1.x-0.1.5-fabric`
+- `v26.1.2-0.2.0-fabric`
 - https://github.com/BoyAxl/CrittersAndCompanions-Fabric-Port/releases
 
 The port has been tested in-game for startup, world creation, item rendering, selected recipes, selected entity rendering, and several core interactions. It should still be treated as experimental until broader gameplay coverage is completed.

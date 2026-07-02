@@ -4,16 +4,23 @@ import com.github.eterdelta.crittersandcompanions.CrittersAndCompanions;
 import com.github.eterdelta.crittersandcompanions.platform.Services;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.Registries;
+import net.minecraft.network.syncher.EntityDataAccessor;
+import net.minecraft.network.syncher.EntityDataSerializers;
+import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.tags.TagKey;
+import net.minecraft.util.Mth;
+import net.minecraft.world.DifficultyInstance;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.AgeableMob;
+import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.SpawnGroupData;
 import net.minecraft.world.entity.TamableAnimal;
 import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
@@ -38,9 +45,12 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.ServerLevelAccessor;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.gameevent.GameEvent;
+import net.minecraft.world.level.storage.ValueInput;
+import net.minecraft.world.level.storage.ValueOutput;
 import net.minecraft.world.phys.Vec3;
 import com.geckolib.animatable.GeoAnimatable;
 import com.geckolib.animatable.GeoEntity;
@@ -54,10 +64,13 @@ import com.geckolib.util.GeckoLibUtil;
 
 public class JumpingSpiderEntity extends TamableAnimal implements GeoEntity {
 
+    private static final EntityDataAccessor<Integer> VARIANT = SynchedEntityData.defineId(JumpingSpiderEntity.class, EntityDataSerializers.INT);
     private static final TagKey<Item> FOODS_TAG = TagKey.create(Registries.ITEM, CrittersAndCompanions.createId("jumping_spider_food"));
 
     private final AnimatableInstanceCache cache = GeckoLibUtil.createInstanceCache(this);
     private PanicGoal panicGoal;
+    private BlockPos activeJukebox;
+    private boolean dancing;
 
     public JumpingSpiderEntity(EntityType<? extends JumpingSpiderEntity> entityType, Level level) {
         super(entityType, level);
@@ -66,6 +79,12 @@ public class JumpingSpiderEntity extends TamableAnimal implements GeoEntity {
 
     public static AttributeSupplier.Builder createAttributes() {
         return Spider.createAttributes().add(Attributes.MAX_HEALTH, 14.0D).add(Attributes.ATTACK_DAMAGE, 8.0D).add(Attributes.TEMPT_RANGE, 10.0D);
+    }
+
+    @Override
+    protected void defineSynchedData(SynchedEntityData.Builder builder) {
+        super.defineSynchedData(builder);
+        builder.define(VARIANT, 0);
     }
 
     @Override
@@ -80,7 +99,7 @@ public class JumpingSpiderEntity extends TamableAnimal implements GeoEntity {
         this.goalSelector.addGoal(4, new MeleeAttackGoal(this, 1.0D, true));
         this.goalSelector.addGoal(5, new TemptGoal(this, 1.0D, this.ingredient(FOODS_TAG), false));
         this.goalSelector.addGoal(6, new FollowOwnerGoal(this, 1.0D, 5.0F, 1.0F));
-        this.goalSelector.addGoal(7, new WaterAvoidingRandomStrollGoal(this, 0.8D));
+        this.goalSelector.addGoal(7, new DancingStrollGoal(this, 0.8D));
         this.goalSelector.addGoal(8, new LookAtPlayerGoal(this, Player.class, 8.0F));
         this.goalSelector.addGoal(9, new RandomLookAroundGoal(this));
 
@@ -93,6 +112,39 @@ public class JumpingSpiderEntity extends TamableAnimal implements GeoEntity {
     @Override
     protected void playStepSound(BlockPos blockPos, BlockState blockState) {
         this.playSound(SoundEvents.SPIDER_STEP, 0.1F, 2.0F);
+    }
+
+    @Override
+    public void addAdditionalSaveData(ValueOutput output) {
+        super.addAdditionalSaveData(output);
+        output.putInt("Variant", this.getVariant());
+    }
+
+    @Override
+    public void readAdditionalSaveData(ValueInput input) {
+        super.readAdditionalSaveData(input);
+        this.setVariant(input.getIntOr("Variant", 0));
+    }
+
+    @Override
+    public SpawnGroupData finalizeSpawn(ServerLevelAccessor levelAccessor, DifficultyInstance difficultyInstance, EntitySpawnReason mobSpawnType, SpawnGroupData spawnGroupData) {
+        this.setVariant(this.random.nextInt(8));
+        return super.finalizeSpawn(levelAccessor, difficultyInstance, mobSpawnType, spawnGroupData);
+    }
+
+    @Override
+    public void aiStep() {
+        if (this.activeJukebox == null || !this.activeJukebox.closerToCenterThan(this.position(), 5.0D) || !this.level().getBlockState(this.activeJukebox).is(Blocks.JUKEBOX)) {
+            this.activeJukebox = null;
+            this.dancing = false;
+        }
+        super.aiStep();
+    }
+
+    @Override
+    public void setRecordPlayingNearby(BlockPos pos, boolean playing) {
+        this.activeJukebox = pos;
+        this.dancing = playing;
     }
 
     @Override
@@ -154,12 +206,14 @@ public class JumpingSpiderEntity extends TamableAnimal implements GeoEntity {
     }
 
     private PlayState predicate(AnimationTest<?> event) {
-        if (this.isInSittingPose()) {
-            event.controller().setAnimation(RawAnimation.begin().thenLoop("jumping_spider_sit"));
+        if (this.isDancing()) {
+            event.controller().setAnimation(RawAnimation.begin().thenLoop("dance"));
+        } else if (this.isInSittingPose()) {
+            event.controller().setAnimation(RawAnimation.begin().thenLoop("sit"));
         } else if (event.isMoving()) {
-            event.controller().setAnimation(RawAnimation.begin().thenLoop("jumping_spider_walk"));
+            event.controller().setAnimation(RawAnimation.begin().thenLoop("walk"));
         } else {
-            event.controller().setAnimation(RawAnimation.begin().thenLoop("jumping_spider_idle"));
+            event.controller().setAnimation(RawAnimation.begin().thenLoop("idle"));
         }
         return PlayState.CONTINUE;
     }
@@ -178,6 +232,18 @@ public class JumpingSpiderEntity extends TamableAnimal implements GeoEntity {
         return Ingredient.of(this.registryAccess().lookupOrThrow(Registries.ITEM).getOrThrow(tag));
     }
 
+    public int getVariant() {
+        return this.entityData.get(VARIANT);
+    }
+
+    public void setVariant(int variant) {
+        this.entityData.set(VARIANT, Mth.clamp(variant, 0, 7));
+    }
+
+    public boolean isDancing() {
+        return this.dancing;
+    }
+
     static class JumpingSpiderMoveControl extends MoveControl {
         private final JumpingSpiderEntity spider;
 
@@ -191,6 +257,25 @@ public class JumpingSpiderEntity extends TamableAnimal implements GeoEntity {
                 this.spider.setDeltaMovement(this.spider.getDeltaMovement().add(0.0D, 0.6D, 0.0D));
             }
             super.tick();
+        }
+    }
+
+    private static class DancingStrollGoal extends WaterAvoidingRandomStrollGoal {
+        private final JumpingSpiderEntity spider;
+
+        DancingStrollGoal(JumpingSpiderEntity spider, double speedModifier) {
+            super(spider, speedModifier);
+            this.spider = spider;
+        }
+
+        @Override
+        public boolean canUse() {
+            return !this.spider.isDancing() && super.canUse();
+        }
+
+        @Override
+        public boolean canContinueToUse() {
+            return !this.spider.isDancing() && super.canContinueToUse();
         }
     }
 

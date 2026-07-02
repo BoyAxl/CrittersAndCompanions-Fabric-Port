@@ -4,6 +4,7 @@
   "package": "com.github.eterdelta.crittersandcompanions.mixin",
   "compatibilityLevel": "JAVA_25",
   "mixins": [
+    "AbstractIllagerMixin",
     "DrownedMixin",
     "LivingEntityMixin",
     "MobMixin",
@@ -11,6 +12,8 @@
     "NeutralMobsMixin",
     "PlayerMixin",
     "SpawnPlacementsAccessor",
+    "WallClimberNavigationAccessor",
+    "ZombieMixin",
     "ZombifiedPiglinMixin"
   ],
   "client": [

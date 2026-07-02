@@ -10,6 +10,8 @@ import com.github.eterdelta.crittersandcompanions.platform.Services;
 import com.github.eterdelta.crittersandcompanions.registry.CACBlocks;
 import com.github.eterdelta.crittersandcompanions.registry.CACEntities;
 import com.github.eterdelta.crittersandcompanions.registry.CACItems;
+import com.github.eterdelta.crittersandcompanions.registry.CACMenuTypes;
+import com.github.eterdelta.crittersandcompanions.registry.CACPotions;
 import com.github.eterdelta.crittersandcompanions.registry.CACSounds;
 import java.util.function.BiConsumer;
 import net.minecraft.core.registries.Registries;
@@ -39,6 +41,8 @@ public class CrittersAndCompanions {
         CACBlocks.init();
         CACEntities.init();
         CACItems.init();
+        CACMenuTypes.init();
+        CACPotions.init();
         CACSounds.init();
         CACPacketHandler.registerPackets();
         registerColors();
@@ -59,6 +63,12 @@ public class CrittersAndCompanions {
         event.accept(CACEntities.DUMBO_OCTOPUS.get(), DumboOctopusEntity.createAttributes().build());
         event.accept(CACEntities.LEAF_INSECT.get(), LeafInsectEntity.createAttributes().build());
         event.accept(CACEntities.RED_PANDA.get(), RedPandaEntity.createAttributes().build());
+        event.accept(CACEntities.LADYBUG.get(), LadybugEntity.createAttributes().build());
+        event.accept(CACEntities.ROLY_POLY.get(), RolyPolyEntity.createAttributes().build());
+        event.accept(CACEntities.SNAIL.get(), SnailEntity.createAttributes().build());
+        event.accept(CACEntities.STAG_BEETLE.get(), StagBeetleEntity.createAttributes().build());
+        event.accept(CACEntities.STICK_BUG.get(), StickBugEntity.createAttributes().build());
+        event.accept(CACEntities.WEEVIL.get(), WeevilEntity.createAttributes().build());
     }
 
     private static void registerColors() {

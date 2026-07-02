@@ -9,6 +9,7 @@ import java.util.function.Predicate;
 import net.fabricmc.fabric.api.biome.v1.BiomeModifications;
 import net.fabricmc.fabric.api.biome.v1.BiomeSelectionContext;
 import net.minecraft.core.registries.Registries;
+import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.tags.BiomeTags;
 import net.minecraft.tags.TagKey;
@@ -18,15 +19,30 @@ import net.minecraft.world.level.biome.Biomes;
 import net.minecraft.world.level.levelgen.GenerationStep;
 
 public class CACWorldGen {
+    private static final TagKey<Biome> COMMON_IS_FOREST = commonBiomeTag("is_forest");
+    private static final TagKey<Biome> COMMON_IS_JUNGLE = commonBiomeTag("is_jungle");
+    private static final TagKey<Biome> COMMON_IS_LUSH = commonBiomeTag("is_lush");
 
     public static void register() {
         addSpawnsTo(BiomeTags.IS_JUNGLE, CACEntities.LEAF_INSECT);
         addSpawnsTo(BiomeTags.IS_JUNGLE, CACEntities.RED_PANDA);
-        addSpawnsTo(BiomeTags.IS_JUNGLE, CACEntities.JUMPING_SPIDER);
+        addSpawnsTo(COMMON_IS_JUNGLE, CACEntities.JUMPING_SPIDER);
         addSpawnsTo(BiomeTags.IS_FOREST, CACEntities.LEAF_INSECT);
         addSpawnsTo(BiomeTags.IS_FOREST, CACEntities.FERRET);
-        addSpawnsTo(BiomeTags.IS_FOREST, CACEntities.JUMPING_SPIDER);
-        addSpawnsTo(Biomes.LUSH_CAVES, CACEntities.JUMPING_SPIDER);
+        addSpawnsTo(COMMON_IS_FOREST, CACEntities.JUMPING_SPIDER);
+        addSpawnsTo(COMMON_IS_FOREST, CACEntities.LADYBUG);
+        addSpawnsTo(COMMON_IS_FOREST, CACEntities.STAG_BEETLE);
+        addSpawnsTo(COMMON_IS_FOREST, CACEntities.ROLY_POLY);
+        addSpawnsTo(COMMON_IS_FOREST, CACEntities.SNAIL);
+        addSpawnsTo(COMMON_IS_FOREST, CACEntities.STICK_BUG);
+        addSpawnsTo(COMMON_IS_FOREST, CACEntities.WEEVIL);
+        addSpawnsTo(COMMON_IS_LUSH, CACEntities.JUMPING_SPIDER);
+        addSpawnsTo(COMMON_IS_LUSH, CACEntities.LADYBUG);
+        addSpawnsTo(COMMON_IS_LUSH, CACEntities.STAG_BEETLE);
+        addSpawnsTo(COMMON_IS_LUSH, CACEntities.ROLY_POLY);
+        addSpawnsTo(COMMON_IS_LUSH, CACEntities.SNAIL);
+        addSpawnsTo(COMMON_IS_LUSH, CACEntities.STICK_BUG);
+        addSpawnsTo(COMMON_IS_LUSH, CACEntities.WEEVIL);
         addSpawnsTo(Biomes.OCEAN, CACEntities.SEA_BUNNY);
         addSpawnsTo(Biomes.OCEAN, CACEntities.DUMBO_OCTOPUS);
         addSpawnsTo(Biomes.DEEP_OCEAN, CACEntities.SEA_BUNNY);
@@ -48,6 +64,10 @@ public class CACWorldGen {
         addFeatureTo(CACTags.SILK_COCOON_LUSH_SPAWNS, "silk_cocoon_lush");
         addFeatureTo(CACTags.SILK_COCOON_SPAWNS, "hanging_silk_cocoon");
         addFeatureTo(CACTags.SILK_COCOON_LUSH_SPAWNS, "hanging_silk_cocoon_lush");
+    }
+
+    private static TagKey<Biome> commonBiomeTag(String path) {
+        return TagKey.create(Registries.BIOME, Identifier.fromNamespaceAndPath("c", path));
     }
 
     private static void addFeatureTo(TagKey<Biome> biome, String feature) {

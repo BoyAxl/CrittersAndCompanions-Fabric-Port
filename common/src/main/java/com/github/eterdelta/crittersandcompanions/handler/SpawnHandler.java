@@ -1,6 +1,7 @@
 package com.github.eterdelta.crittersandcompanions.handler;
 
 import com.github.eterdelta.crittersandcompanions.entity.DragonflyEntity;
+import com.github.eterdelta.crittersandcompanions.entity.BugEntity;
 import com.github.eterdelta.crittersandcompanions.entity.LeafInsectEntity;
 import com.github.eterdelta.crittersandcompanions.entity.OtterEntity;
 import com.github.eterdelta.crittersandcompanions.mixin.SpawnPlacementsAccessor;
@@ -22,5 +23,11 @@ public class SpawnHandler {
         SpawnPlacementsAccessor.invokeRegister(CACEntities.LEAF_INSECT.get(), SpawnPlacementTypes.NO_RESTRICTIONS, Heightmap.Types.MOTION_BLOCKING, LeafInsectEntity::checkLeafInsectSpawnRules);
         SpawnPlacementsAccessor.invokeRegister(CACEntities.RED_PANDA.get(), SpawnPlacementTypes.ON_GROUND, Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, Animal::checkAnimalSpawnRules);
         SpawnPlacementsAccessor.invokeRegister(CACEntities.JUMPING_SPIDER.get(), SpawnPlacementTypes.ON_GROUND, Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, (e, l, s, p, r) -> true);
+        SpawnPlacementsAccessor.invokeRegister(CACEntities.LADYBUG.get(), SpawnPlacementTypes.ON_GROUND, Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, BugEntity::checkBugSpawnRules);
+        SpawnPlacementsAccessor.invokeRegister(CACEntities.ROLY_POLY.get(), SpawnPlacementTypes.ON_GROUND, Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, BugEntity::checkBugSpawnRules);
+        SpawnPlacementsAccessor.invokeRegister(CACEntities.SNAIL.get(), SpawnPlacementTypes.ON_GROUND, Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, BugEntity::checkBugSpawnRules);
+        SpawnPlacementsAccessor.invokeRegister(CACEntities.STAG_BEETLE.get(), SpawnPlacementTypes.ON_GROUND, Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, BugEntity::checkBugSpawnRules);
+        SpawnPlacementsAccessor.invokeRegister(CACEntities.STICK_BUG.get(), SpawnPlacementTypes.ON_GROUND, Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, BugEntity::checkBugSpawnRules);
+        SpawnPlacementsAccessor.invokeRegister(CACEntities.WEEVIL.get(), SpawnPlacementTypes.ON_GROUND, Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, BugEntity::checkBugSpawnRules);
     }
 }

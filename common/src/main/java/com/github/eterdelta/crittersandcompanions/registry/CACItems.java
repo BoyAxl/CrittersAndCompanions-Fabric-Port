@@ -1,6 +1,8 @@
 package com.github.eterdelta.crittersandcompanions.registry;
 
 import com.github.eterdelta.crittersandcompanions.CrittersAndCompanions;
+import com.github.eterdelta.crittersandcompanions.item.AcornHatItem;
+import com.github.eterdelta.crittersandcompanions.item.AcornItem;
 import com.github.eterdelta.crittersandcompanions.item.DragonflyArmorItem;
 import com.github.eterdelta.crittersandcompanions.item.GrapplingHookItem;
 import com.github.eterdelta.crittersandcompanions.item.PearlNecklaceItem;
@@ -29,8 +31,10 @@ public class CACItems {
     public static final RegistryEntry<Item> KOI_FISH = ITEMS.register("koi_fish", () -> new Item(properties("koi_fish").food(Foods.TROPICAL_FISH)));
     public static final RegistryEntry<Item> PEARL = ITEMS.register("pearl", () -> new Item(properties("pearl")));
     public static final RegistryEntry<Item> SILK = ITEMS.register("silk", () -> new Item(properties("silk")));
+    public static final RegistryEntry<Item> ACORN = ITEMS.register("acorn", () -> new AcornItem(properties("acorn")));
 
     public static final RegistryEntry<Item> SEA_BUNNY_SLIME_BOTTLE = ITEMS.register("sea_bunny_slime_bottle", () -> new Item(properties("sea_bunny_slime_bottle").craftRemainder(Items.GLASS_BOTTLE).stacksTo(16)));
+    public static final RegistryEntry<Item> SNAIL_SLIME_BOTTLE = ITEMS.register("snail_slime_bottle", () -> new Item(properties("snail_slime_bottle").craftRemainder(Items.GLASS_BOTTLE).stacksTo(16)));
     public static final RegistryEntry<Item> SEA_BUNNY_SLIME_BLOCK = ITEMS.register("sea_bunny_slime_block", () -> new BlockItem(CACBlocks.SEA_BUNNY_SLIME_BLOCK.get(), blockProperties("sea_bunny_slime_block")));
 
     public static final RegistryEntry<Item> SILK_LEAD = ITEMS.register("silk_lead", () -> new SilkLeashItem(properties("silk_lead")));
@@ -47,6 +51,7 @@ public class CACItems {
     public static final RegistryEntry<Item> DIAMOND_DRAGONFLY_ARMOR = ITEMS.register("diamond_dragonfly_armor", () -> new DragonflyArmorItem(ArmorMaterials.DIAMOND, "diamond", properties("diamond_dragonfly_armor").stacksTo(1)));
     public static final RegistryEntry<Item> GOLD_DRAGONFLY_ARMOR = ITEMS.register("gold_dragonfly_armor", () -> new DragonflyArmorItem(ArmorMaterials.GOLD, "gold", properties("gold_dragonfly_armor").stacksTo(1)));
     public static final RegistryEntry<Item> IRON_DRAGONFLY_ARMOR = ITEMS.register("iron_dragonfly_armor", () -> new DragonflyArmorItem(ArmorMaterials.IRON, "iron", properties("iron_dragonfly_armor").stacksTo(1)));
+    public static final RegistryEntry<Item> ACORN_HAT = ITEMS.register("acorn_hat", () -> new AcornHatItem(properties("acorn_hat")));
 
     public static final RegistryEntry<Item> DRAGONFLY_SPAWN_EGG = ITEMS.register("dragonfly_spawn_egg", () -> Services.PLATFORM.createSpawnEgg(CACEntities.DRAGONFLY, 0x08EECF, 0xD3FF96, properties("dragonfly_spawn_egg")));
     public static final RegistryEntry<Item> FERRET_SPAWN_EGG = ITEMS.register("ferret_spawn_egg", () -> Services.PLATFORM.createSpawnEgg(CACEntities.FERRET, 0xC5AC88, 0x37212D, properties("ferret_spawn_egg")));
@@ -54,10 +59,16 @@ public class CACItems {
     public static final RegistryEntry<Item> JUMPING_SPIDER_SPAWN_EGG = ITEMS.register("jumping_spider_spawn_egg", () -> Services.PLATFORM.createSpawnEgg(CACEntities.JUMPING_SPIDER, 0x34191E, 0x865F33, properties("jumping_spider_spawn_egg")));
     public static final RegistryEntry<Item> KOI_FISH_SPAWN_EGG = ITEMS.register("koi_fish_spawn_egg", () -> Services.PLATFORM.createSpawnEgg(CACEntities.KOI_FISH, 0xF3ECED, 0xFB5321, properties("koi_fish_spawn_egg")));
     public static final RegistryEntry<Item> LEAF_INSECT_SPAWN_EGG = ITEMS.register("leaf_insect_spawn_egg", () -> Services.PLATFORM.createSpawnEgg(CACEntities.LEAF_INSECT, 0xDAD475, 0x3C6C34, properties("leaf_insect_spawn_egg")));
+    public static final RegistryEntry<Item> LADYBUG_SPAWN_EGG = ITEMS.register("ladybug_spawn_egg", () -> Services.PLATFORM.createSpawnEgg(CACEntities.LADYBUG, 0xDE3023, 0x170302, properties("ladybug_spawn_egg")));
     public static final RegistryEntry<Item> OTTER_SPAWN_EGG = ITEMS.register("otter_spawn_egg", () -> Services.PLATFORM.createSpawnEgg(CACEntities.OTTER, 0x352C34, 0xB49494, properties("otter_spawn_egg")));
     public static final RegistryEntry<Item> RED_PANDA_SPAWN_EGG = ITEMS.register("red_panda_spawn_egg", () -> Services.PLATFORM.createSpawnEgg(CACEntities.RED_PANDA, 0xF4943C, 0x13131B, properties("red_panda_spawn_egg")));
+    public static final RegistryEntry<Item> ROLY_POLY_SPAWN_EGG = ITEMS.register("roly_poly_spawn_egg", () -> Services.PLATFORM.createSpawnEgg(CACEntities.ROLY_POLY, 0x918780, 0x4E494D, properties("roly_poly_spawn_egg")));
     public static final RegistryEntry<Item> SEA_BUNNY_SPAWN_EGG = ITEMS.register("sea_bunny_spawn_egg", () -> Services.PLATFORM.createSpawnEgg(CACEntities.SEA_BUNNY, 0xF4ECE4, 0x453337, properties("sea_bunny_spawn_egg")));
     public static final RegistryEntry<Item> SHIMA_ENAGA_SPAWN_EGG = ITEMS.register("shima_enaga_spawn_egg", () -> Services.PLATFORM.createSpawnEgg(CACEntities.SHIMA_ENAGA, 0xFCFCEC, 0x5C3C34, properties("shima_enaga_spawn_egg")));
+    public static final RegistryEntry<Item> SNAIL_SPAWN_EGG = ITEMS.register("snail_spawn_egg", () -> Services.PLATFORM.createSpawnEgg(CACEntities.SNAIL, 0x834434, 0xEB9B5C, properties("snail_spawn_egg")));
+    public static final RegistryEntry<Item> STAG_BEETLE_SPAWN_EGG = ITEMS.register("stag_beetle_spawn_egg", () -> Services.PLATFORM.createSpawnEgg(CACEntities.STAG_BEETLE, 0x11111A, 0x2B4854, properties("stag_beetle_spawn_egg")));
+    public static final RegistryEntry<Item> STICK_BUG_SPAWN_EGG = ITEMS.register("stick_bug_spawn_egg", () -> Services.PLATFORM.createSpawnEgg(CACEntities.STICK_BUG, 0xA97338, 0x70851E, properties("stick_bug_spawn_egg")));
+    public static final RegistryEntry<Item> WEEVIL_SPAWN_EGG = ITEMS.register("weevil_spawn_egg", () -> Services.PLATFORM.createSpawnEgg(CACEntities.WEEVIL, 0xB06B3A, 0x975632, properties("weevil_spawn_egg")));
 
     public static final RegistryEntry<Item> SILK_COCOON = ITEMS.register("silk_cocoon", () -> new BlockItem(CACBlocks.SILK_COCOON.get(), blockProperties("silk_cocoon")));
 

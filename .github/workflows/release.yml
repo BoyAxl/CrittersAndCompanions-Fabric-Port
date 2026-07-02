@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: Release tag to publish, for example v26.1.x-0.1.6-fabric.
+        description: Release tag to publish, for example v26.1.2-0.2.0-fabric.
         required: true
       name:
         description: Version display name. Defaults to the tag when empty.

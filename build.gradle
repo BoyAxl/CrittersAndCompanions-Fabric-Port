@@ -17,6 +17,10 @@ java {
     targetCompatibility = JavaVersion.toVersion(java_version)
 }
 
+loom {
+    accessWidenerPath = file("common/src/main/resources/${mod_id}.accesswidener")
+}
+
 sourceSets {
     main {
         java {

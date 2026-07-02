@@ -1,0 +1,6 @@
+{
+  "parent": "minecraft:item/generated",
+  "textures": {
+    "layer0": "crittersandcompanions:item/ladybug_spawn_egg"
+  }
+}

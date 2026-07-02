@@ -1,0 +1,14 @@
+{
+  "layers": {
+    "humanoid": [
+      {
+        "texture": "crittersandcompanions:acorn"
+      }
+    ],
+    "humanoid_baby": [
+      {
+        "texture": "crittersandcompanions:acorn"
+      }
+    ]
+  }
+}

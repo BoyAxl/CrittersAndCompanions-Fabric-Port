@@ -179,5 +179,57 @@
       "crittersandcompanions:entity/bubble_pop"
     ],
     "subtitle": "subtitles.crittersandcompanions.bubble_pop"
+  },
+  "entity.bugs.walk": {
+    "sounds": [
+      "crittersandcompanions:entity/bugs/walk_loop"
+    ],
+    "subtitle": "subtitles.crittersandcompanions.entity.bugs.walk"
+  },
+  "entity.bugs.hurt": {
+    "sounds": [
+      "crittersandcompanions:entity/bugs/hurt_1",
+      "crittersandcompanions:entity/bugs/hurt_2",
+      "crittersandcompanions:entity/bugs/hurt_3"
+    ],
+    "subtitle": "subtitles.crittersandcompanions.entity.bugs.hurt"
+  },
+  "entity.snail.walk": {
+    "sounds": [
+      "crittersandcompanions:entity/snail/walk_loop"
+    ],
+    "subtitle": "subtitles.crittersandcompanions.entity.snail.walk"
+  },
+  "entity.snail.gary_idle": {
+    "sounds": [
+      "crittersandcompanions:entity/snail/gary_idle_1",
+      "crittersandcompanions:entity/snail/gary_idle_2"
+    ],
+    "subtitle": "subtitles.crittersandcompanions.entity.snail.gary_idle"
+  },
+  "entity.snail.gary_purr": {
+    "sounds": [
+      "crittersandcompanions:entity/snail/gary_purr"
+    ],
+    "subtitle": "subtitles.crittersandcompanions.entity.snail.gary_purr"
+  },
+  "entity.snail.gary_sing": {
+    "sounds": [
+      "crittersandcompanions:entity/snail/gary_sing"
+    ],
+    "subtitle": "subtitles.crittersandcompanions.entity.snail.gary_sing"
+  },
+  "entity.snail.gary_hurt": {
+    "sounds": [
+      "crittersandcompanions:entity/snail/gary_hurt_1",
+      "crittersandcompanions:entity/snail/gary_hurt_2"
+    ],
+    "subtitle": "subtitles.crittersandcompanions.entity.snail.gary_hurt"
+  },
+  "entity.ladybug.fly": {
+    "sounds": [
+      "crittersandcompanions:entity/ladybug/fly_loop"
+    ],
+    "subtitle": "subtitles.crittersandcompanions.entity.ladybug.fly"
   }
 }
