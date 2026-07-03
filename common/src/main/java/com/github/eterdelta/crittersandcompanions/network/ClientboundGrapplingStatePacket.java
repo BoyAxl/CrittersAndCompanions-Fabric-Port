@@ -41,12 +41,13 @@ public record ClientboundGrapplingStatePacket(OptionalInt hook, int playerId) im
     }
 
     public void handle() {
-        Player player = (Player) Minecraft.getInstance().level.getEntity(playerId);
+        var level = Minecraft.getInstance().level;
+        if (level == null) return;
 
-        if (player instanceof IGrapplingState grappleState) {
+        if (level.getEntity(playerId) instanceof Player player && player instanceof IGrapplingState grappleState) {
             hook.ifPresentOrElse(id -> {
-                var entity = (GrapplingHookEntity) Minecraft.getInstance().level.getEntity(id);
-                grappleState.setHook(entity);
+                var entity = level.getEntity(id);
+                grappleState.setHook(entity instanceof GrapplingHookEntity grapplingHook ? grapplingHook : null);
             }, () -> {
                 grappleState.setHook(null);
             });

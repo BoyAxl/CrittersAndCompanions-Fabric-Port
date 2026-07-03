@@ -65,7 +65,11 @@ public class GrapplingHookEntity extends ThrowableItemProjectile {
         }
 
         Entity owner = getOwner();
-        double offsetLengthSqr = owner != null ? distanceToSqr(owner) : Double.MAX_VALUE;
+        if (discardOnServerIfOwnerInvalid(owner)) {
+            return;
+        }
+
+        double offsetLengthSqr = distanceToSqr(owner);
 
         var maxDistance = Services.CONFIGS.common().grapplingHookMaxDistance.get();
         var maxDistanceSqr = maxDistance * maxDistance;
@@ -85,7 +89,7 @@ public class GrapplingHookEntity extends ThrowableItemProjectile {
         }
 
         this.isStick = willStick;
-        if (this.isStick && owner != null) {
+        if (this.isStick) {
             this.freezeAtStuckPosition();
             applyTetherForce(owner, offsetLengthSqr);
         } else {
@@ -118,16 +122,19 @@ public class GrapplingHookEntity extends ThrowableItemProjectile {
 
     public void pull() {
         Entity owner = getOwner();
-        if (owner != null) {
-            if (isStick) {
-                var pullSpeed = Services.CONFIGS.common().grapplingHookSpeed.get() / PULL_SPEED_DIVISOR;
-                var maxSpeed = Services.CONFIGS.common().grapplingHookMaxSpeed.get();
-                var direction = position().subtract(owner.position()).normalize();
-                var distance = distanceTo(owner);
-                owner.setDeltaMovement(direction.scale(Math.min(maxSpeed, pullSpeed * distance)));
-            }
-            discard();
+        if (discardOnServerIfOwnerInvalid(owner)) {
+            return;
         }
+
+        if (isStick) {
+            var pullSpeed = Services.CONFIGS.common().grapplingHookSpeed.get() / PULL_SPEED_DIVISOR;
+            var maxSpeed = Services.CONFIGS.common().grapplingHookMaxSpeed.get();
+            var direction = position().subtract(owner.position()).normalize();
+            var distance = distanceTo(owner);
+            owner.setDeltaMovement(direction.scale(Math.min(maxSpeed, pullSpeed * distance)));
+        }
+
+        discard();
     }
 
     public void updateOwnerState() {
@@ -142,7 +149,7 @@ public class GrapplingHookEntity extends ThrowableItemProjectile {
 
     public boolean isFocused() {
         Entity owner = getOwner();
-        if (owner instanceof Player player) {
+        if (hasValidOwner(owner) && owner instanceof Player player) {
             return ItemStack.isSameItemSameComponents(player.getMainHandItem(), getItem())
                     || ItemStack.isSameItemSameComponents(player.getOffhandItem(), getItem());
         }
@@ -217,6 +224,22 @@ public class GrapplingHookEntity extends ThrowableItemProjectile {
         this.stuckPosition = null;
         this.stuckBlockPos = null;
         this.setNoGravity(false);
+    }
+
+    private static boolean hasValidOwner(Entity owner) {
+        return owner instanceof Player && owner.isAlive() && !owner.isRemoved();
+    }
+
+    private boolean discardOnServerIfOwnerInvalid(Entity owner) {
+        if (hasValidOwner(owner)) {
+            return false;
+        }
+
+        if (!level().isClientSide()) {
+            discard();
+        }
+
+        return true;
     }
 
 }
