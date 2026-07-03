@@ -25,7 +25,7 @@ public class ZombieMixin {
             if (mount != null) {
                 mount.snapTo(self.getX(), self.getY(), self.getZ(), self.getYRot(), 0.0F);
                 mount.finalizeSpawn(level, difficulty, EntitySpawnReason.JOCKEY, null);
-                self.startRiding(mount);
+                self.startRiding(mount, false, false);
                 level.addFreshEntity(mount);
             }
         } else {
@@ -33,7 +33,7 @@ public class ZombieMixin {
             if (mount != null) {
                 mount.snapTo(self.getX(), self.getY(), self.getZ(), self.getYRot(), 0.0F);
                 mount.finalizeSpawn(level, difficulty, EntitySpawnReason.JOCKEY, null);
-                self.startRiding(mount);
+                self.startRiding(mount, false, false);
                 level.addFreshEntity(mount);
             }
         }
