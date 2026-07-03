@@ -107,6 +107,12 @@ public class StagBeetleEntity extends BugEntity {
     }
 
     @Override
+    protected String getLoopAnimation(AnimationTest<?> event) {
+        String animation = super.getLoopAnimation(event);
+        return "sit".equals(animation) ? "sitting" : animation;
+    }
+
+    @Override
     protected @Nullable SoundEvent getHurtSound(@NotNull DamageSource damageSource) {
         return CACSounds.BUGS_HURT.get();
     }
