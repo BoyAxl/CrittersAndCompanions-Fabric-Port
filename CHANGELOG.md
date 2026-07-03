@@ -5,6 +5,7 @@
 ### Added
 
 - Added `crittersandcompanions-spawns.toml`, matching the official configurable spawn file with biome/tag, weight, min, and max entries per entity.
+- Added Spanish translations for the new entities, items, spawn eggs, potion names, and subtitles.
 
 ### Changed
 
