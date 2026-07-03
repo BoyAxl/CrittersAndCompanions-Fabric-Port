@@ -22,7 +22,6 @@ import net.minecraft.world.entity.ai.goal.SitWhenOrderedToGoal;
 import net.minecraft.world.entity.ai.goal.TemptGoal;
 import net.minecraft.world.entity.ai.navigation.FlyingPathNavigation;
 import net.minecraft.world.entity.ai.navigation.PathNavigation;
-import net.minecraft.world.entity.animal.FlyingAnimal;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.level.block.state.BlockState;
@@ -32,7 +31,7 @@ import org.jetbrains.annotations.Nullable;
 import com.geckolib.animatable.manager.AnimatableManager;
 import com.geckolib.animation.state.AnimationTest;
 
-public class LadybugEntity extends BugEntity implements FlyingAnimal {
+public class LadybugEntity extends BugEntity {
     private static final int HEALING_AURA_RADIUS = 4;
     private static final int HEALING_AURA_INTERVAL = 20 * 9;
     private static final int INITIAL_FLIGHT_ANIMATION_DELAY = 8;
@@ -120,7 +119,6 @@ public class LadybugEntity extends BugEntity implements FlyingAnimal {
         return super.getLoopAnimation(event);
     }
 
-    @Override
     public boolean isFlying() {
         return this.tickCount > INITIAL_FLIGHT_ANIMATION_DELAY && !this.onGround();
     }

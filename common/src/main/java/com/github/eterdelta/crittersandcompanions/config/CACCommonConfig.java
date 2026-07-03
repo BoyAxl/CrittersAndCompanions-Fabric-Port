@@ -3,6 +3,7 @@ package com.github.eterdelta.crittersandcompanions.config;
 import com.electronwill.nightconfig.core.CommentedConfig;
 import com.electronwill.nightconfig.core.file.CommentedFileConfig;
 import com.github.eterdelta.crittersandcompanions.CrittersAndCompanions;
+import com.github.eterdelta.crittersandcompanions.registry.CACVanillaEntityTypes;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import net.minecraft.world.entity.EntityType;
@@ -25,8 +26,8 @@ public class CACCommonConfig {
     public final DoubleValue grapplingHookMaxDistance;
 
     public double necklaceRangeDebuff(EntityType<?> type, int level) {
-        if(type == EntityType.GUARDIAN && level > 1) return necklaceGuardianDebuff.getAsDouble() * level;
-        if(type == EntityType.DROWNED) return necklaceDrownedDebuff.getAsDouble() * level;
+        if(type == CACVanillaEntityTypes.GUARDIAN && level > 1) return necklaceGuardianDebuff.getAsDouble() * level;
+        if(type == CACVanillaEntityTypes.DROWNED) return necklaceDrownedDebuff.getAsDouble() * level;
         return 0;
     }
 

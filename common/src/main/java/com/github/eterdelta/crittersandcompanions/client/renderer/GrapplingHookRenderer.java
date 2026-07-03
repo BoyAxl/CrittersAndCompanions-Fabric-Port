@@ -77,7 +77,7 @@ public class GrapplingHookRenderer extends EntityRenderer<GrapplingHookEntity, G
         float lineX = (float) renderState.lineOriginOffset.x;
         float lineY = (float) renderState.lineOriginOffset.y;
         float lineZ = (float) renderState.lineOriginOffset.z;
-        float lineWidth = Minecraft.getInstance().gameRenderer.getGameRenderState().windowRenderState.appropriateLineWidth;
+        float lineWidth = Minecraft.getInstance().gameRenderer.gameRenderState().windowRenderState.appropriateLineWidth;
         submitNodeCollector.submitCustomGeometry(poseStack, RenderTypes.lines(), (pose, vertexConsumer) -> renderRope(lineX, lineY, lineZ, lineWidth, pose, vertexConsumer));
 
         poseStack.popPose();

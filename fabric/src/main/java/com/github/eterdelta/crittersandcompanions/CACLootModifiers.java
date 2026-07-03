@@ -1,16 +1,16 @@
 package com.github.eterdelta.crittersandcompanions;
 
 import com.github.eterdelta.crittersandcompanions.registry.CACItems;
+import com.github.eterdelta.crittersandcompanions.registry.CACVanillaEntityTypes;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import net.fabricmc.fabric.api.loot.v3.FabricLootPoolBuilder;
 import net.fabricmc.fabric.api.loot.v3.LootTableEvents;
 import net.fabricmc.fabric.mixin.loot.LootTableAccessor;
-import net.minecraft.advancements.criterion.ItemPredicate;
+import net.minecraft.advancements.predicates.ItemPredicate;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.Identifier;
-import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.enchantment.Enchantments;
@@ -34,7 +34,7 @@ public class CACLootModifiers {
             builder.accept(5, CACItems.KOI_FISH.get());
         });
 
-        EntityType.DROWNED.getDefaultLootTable().ifPresent(key -> addEntriesTo(key, 0, builder -> {
+        CACVanillaEntityTypes.DROWNED.getDefaultLootTable().ifPresent(key -> addEntriesTo(key, 0, builder -> {
             builder.accept(1, CACItems.CLAM.get());
         }));
 

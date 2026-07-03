@@ -5,8 +5,7 @@ import com.github.eterdelta.crittersandcompanions.entity.brain.SprintingFollowPa
 import com.github.eterdelta.crittersandcompanions.platform.Services;
 import com.github.eterdelta.crittersandcompanions.registry.CACEntities;
 import com.github.eterdelta.crittersandcompanions.registry.CACSounds;
-import java.util.ArrayList;
-import java.util.Arrays;
+import com.github.eterdelta.crittersandcompanions.registry.CACVanillaEntityTypes;
 import java.util.EnumSet;
 import java.util.List;
 import net.minecraft.core.registries.Registries;
@@ -66,18 +65,18 @@ public class RedPandaEntity extends TamableAnimal implements GeoEntity {
     private static final TagKey<Item> FOODS_TAG = TagKey.create(Registries.ITEM, CrittersAndCompanions.createId("red_panda_food"));
     private static final RawAnimation ALERT_ANIMATION = RawAnimation.begin().thenPlayAndHold("angry");
 
-    protected static final List<EntityType<? extends Mob>> SCAREABLES = new ArrayList<>(Arrays.asList(
-            EntityType.BEE,
-            EntityType.ENDERMAN,
-            EntityType.IRON_GOLEM,
-            EntityType.LLAMA,
-            EntityType.POLAR_BEAR,
-            EntityType.SPIDER,
-            EntityType.CAVE_SPIDER,
-            EntityType.VEX,
-            EntityType.WOLF,
-            EntityType.ZOMBIFIED_PIGLIN
-    ));
+    protected static final List<EntityType<? extends Mob>> SCAREABLES = List.of(
+            CACVanillaEntityTypes.BEE,
+            CACVanillaEntityTypes.ENDERMAN,
+            CACVanillaEntityTypes.IRON_GOLEM,
+            CACVanillaEntityTypes.LLAMA,
+            CACVanillaEntityTypes.POLAR_BEAR,
+            CACVanillaEntityTypes.SPIDER,
+            CACVanillaEntityTypes.CAVE_SPIDER,
+            CACVanillaEntityTypes.VEX,
+            CACVanillaEntityTypes.WOLF,
+            CACVanillaEntityTypes.ZOMBIFIED_PIGLIN
+    );
     private static final EntityDataAccessor<Boolean> SLEEPING = SynchedEntityData.defineId(RedPandaEntity.class, EntityDataSerializers.BOOLEAN);
     private static final EntityDataAccessor<Boolean> ALERT = SynchedEntityData.defineId(RedPandaEntity.class, EntityDataSerializers.BOOLEAN);
     private final AnimatableInstanceCache cache = GeckoLibUtil.createInstanceCache(this);

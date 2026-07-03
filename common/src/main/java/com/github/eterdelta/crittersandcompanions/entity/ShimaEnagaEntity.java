@@ -27,7 +27,6 @@ import net.minecraft.world.entity.ai.goal.SitWhenOrderedToGoal;
 import net.minecraft.world.entity.ai.goal.WaterAvoidingRandomFlyingGoal;
 import net.minecraft.world.entity.ai.navigation.FlyingPathNavigation;
 import net.minecraft.world.entity.ai.navigation.PathNavigation;
-import net.minecraft.world.entity.animal.FlyingAnimal;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -45,7 +44,7 @@ import com.geckolib.animation.object.PlayState;
 import com.geckolib.animation.RawAnimation;
 import com.geckolib.util.GeckoLibUtil;
 
-public class ShimaEnagaEntity extends TamableAnimal implements FlyingAnimal, GeoEntity {
+public class ShimaEnagaEntity extends TamableAnimal implements GeoEntity {
     private static final TagKey<Item> FOODS_TAG = TagKey.create(Registries.ITEM, CrittersAndCompanions.createId("shima_enaga_food"));
     private final AnimatableInstanceCache cache = GeckoLibUtil.createInstanceCache(this);
 
@@ -152,7 +151,6 @@ public class ShimaEnagaEntity extends TamableAnimal implements FlyingAnimal, Geo
         return stack.is(FOODS_TAG);
     }
 
-    @Override
     public boolean isFlying() {
         return !this.onGround();
     }

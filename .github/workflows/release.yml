@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: Release tag to publish, for example v26.1.2-0.2.0-fabric.
+        description: Release tag to publish, for example v26.2.0-0.1.0-fabric.
         required: true
       name:
         description: Version display name. Defaults to the tag when empty.
@@ -70,9 +70,8 @@ jobs:
 
           loaders: fabric
           game-versions: |
-            26.1
-            26.1.1
-            26.1.2
+            [26.2,26.3)
+          game-version-filter: releases
           java: 25
 
           curseforge-dependencies: |
@@ -94,9 +93,8 @@ jobs:
 
           loaders: fabric
           game-versions: |
-            26.1
-            26.1.1
-            26.1.2
+            [26.2,26.3)
+          game-version-filter: releases
           java: 25
 
           modrinth-featured: true

@@ -57,7 +57,6 @@ import net.minecraft.world.entity.animal.rabbit.Rabbit;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.DyeColor;
-import net.minecraft.world.item.DyeItem;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -368,22 +367,11 @@ public class FerretEntity extends TamableAnimal implements GeoEntity {
     }
 
     private DyeColor getDyeColor(ItemStack stack) {
-        if (stack.is(Items.WHITE_DYE)) return DyeColor.WHITE;
-        if (stack.is(Items.ORANGE_DYE)) return DyeColor.ORANGE;
-        if (stack.is(Items.MAGENTA_DYE)) return DyeColor.MAGENTA;
-        if (stack.is(Items.LIGHT_BLUE_DYE)) return DyeColor.LIGHT_BLUE;
-        if (stack.is(Items.YELLOW_DYE)) return DyeColor.YELLOW;
-        if (stack.is(Items.LIME_DYE)) return DyeColor.LIME;
-        if (stack.is(Items.PINK_DYE)) return DyeColor.PINK;
-        if (stack.is(Items.GRAY_DYE)) return DyeColor.GRAY;
-        if (stack.is(Items.LIGHT_GRAY_DYE)) return DyeColor.LIGHT_GRAY;
-        if (stack.is(Items.CYAN_DYE)) return DyeColor.CYAN;
-        if (stack.is(Items.PURPLE_DYE)) return DyeColor.PURPLE;
-        if (stack.is(Items.BLUE_DYE)) return DyeColor.BLUE;
-        if (stack.is(Items.BROWN_DYE)) return DyeColor.BROWN;
-        if (stack.is(Items.GREEN_DYE)) return DyeColor.GREEN;
-        if (stack.is(Items.RED_DYE)) return DyeColor.RED;
-        if (stack.is(Items.BLACK_DYE)) return DyeColor.BLACK;
+        for (DyeColor dyeColor : DyeColor.values()) {
+            if (stack.is(Items.DYE.pick(dyeColor))) {
+                return dyeColor;
+            }
+        }
         return null;
     }
 

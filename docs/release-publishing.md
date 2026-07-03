@@ -67,10 +67,10 @@ The Modrinth publish step is skipped until `MODRINTH_TOKEN` exists, so CurseForg
 
 1. Update `mod_version` in `gradle.properties`.
 
-For example, if the previous CurseForge file was `crittersandcompanions-26.1.2-0.1.7-fabric.jar`, use:
+For example, if the previous CurseForge file was `crittersandcompanions-26.2.0-0.1.0-fabric.jar`, use:
 
 ```properties
-mod_version=26.1.2-0.2.0-fabric
+mod_version=26.2.0-0.1.1-fabric
 ```
 
 2. Commit and push the change.
@@ -78,19 +78,21 @@ mod_version=26.1.2-0.2.0-fabric
 4. Create a new tag, for example:
 
 ```text
-v26.1.2-0.2.0-fabric
+v26.2.0-0.1.1-fabric
 ```
 
 5. Set the release title, for example:
 
 ```text
-Critters and Companions 26.1.2 - 0.2.0 Fabric (Unofficial Port)
+Critters and Companions 26.2.x - 0.1.1 Fabric (Unofficial Port)
 ```
 
 6. Write the changelog in the release body.
 7. Click Publish release.
 
 GitHub Actions will build the mod, attach the jar to the GitHub Release, and upload the same jar to CurseForge. If Modrinth credentials are configured, it will also upload the same jar to Modrinth. The GitHub Release body becomes the platform changelog.
+
+The release workflow publishes against the Minecraft release range `[26.2,26.3)`, so new `26.2.x` patch releases should be picked up automatically by `mc-publish` once CurseForge and Modrinth expose them.
 
 ## Publishing an existing release to Modrinth
 
@@ -102,7 +104,7 @@ Use this when a GitHub Release already exists and only Modrinth needs to be back
 4. Set `tag` to the existing release tag, for example:
 
 ```text
-v26.1.2-0.2.0-fabric
+v26.2.0-0.1.1-fabric
 ```
 
 5. Set `publish_curseforge` to `false`.

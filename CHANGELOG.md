@@ -1,6 +1,14 @@
 # Changelog
 
-## v26.1.2-0.2.1-fabric - Unreleased
+## v26.2.0-0.1.0-fabric - Unreleased
+
+### Changed
+
+- Ported the Fabric branch from Minecraft `26.1.x` to the Minecraft `26.2.x` line.
+- Updated Fabric Loader, Fabric API, GeckoLib, and Forge Config API Port for Minecraft `26.2`.
+- Updated release metadata to publish the 26.2.x branch against Minecraft release versions in the `[26.2,26.3)` range.
+
+## v26.1.2-0.2.1-fabric - 2026-07-03
 
 ### Added
 
