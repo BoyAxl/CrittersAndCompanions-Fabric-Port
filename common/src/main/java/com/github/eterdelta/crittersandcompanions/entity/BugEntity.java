@@ -52,6 +52,7 @@ public abstract class BugEntity extends TamableAnimal implements GeoEntity {
 
     private BlockPos activeJukebox;
     private boolean dancing;
+    private boolean jockeyMount;
     private int danceIndex = 1;
 
     protected BugEntity(EntityType<? extends TamableAnimal> type, Level level, String id, EntityDataAccessor<Integer> variantData, int variantCount, int danceVariantCount) {
@@ -78,6 +79,7 @@ public abstract class BugEntity extends TamableAnimal implements GeoEntity {
         if (this.variantData != null) {
             output.putInt("Variant", this.getVariant());
         }
+        output.putBoolean("IsJockeyMount", this.isJockeyMount());
     }
 
     @Override
@@ -86,6 +88,7 @@ public abstract class BugEntity extends TamableAnimal implements GeoEntity {
         if (this.variantData != null) {
             this.setVariant(input.getIntOr("Variant", 0));
         }
+        this.jockeyMount = input.getBooleanOr("IsJockeyMount", false);
     }
 
     @Override
@@ -94,6 +97,19 @@ public abstract class BugEntity extends TamableAnimal implements GeoEntity {
             this.setVariant(this.random.nextInt(this.variantCount));
         }
         return super.finalizeSpawn(levelAccessor, difficultyInstance, mobSpawnType, spawnGroupData);
+    }
+
+    @Override
+    public boolean removeWhenFarAway(double distance) {
+        return this.isJockeyMount() && !this.isTame() && !this.hasCustomName();
+    }
+
+    public boolean isJockeyMount() {
+        return this.jockeyMount;
+    }
+
+    public void setJockeyMount(boolean jockeyMount) {
+        this.jockeyMount = jockeyMount;
     }
 
     @Override
