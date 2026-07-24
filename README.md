@@ -10,8 +10,8 @@ Current supported release branches:
 
 | Branch | Minecraft line | Latest port release | Java | Fabric Loader | Fabric API | GeckoLib | Forge Config API Port |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `fabric/26.1.x` | `26.1.x` | `v26.1.2-0.2.3-fabric` | `25` | `0.19.2+` | `0.149.0+26.1.2` | `5.5+` | `26.1.4+` |
-| `fabric/26.2.x` | `26.2.x` | `v26.2.0-0.1.2-fabric` | `25` | `0.19.3+` | `0.154.0+26.2` | `5.5.3+` | `26.2.1+` |
+| `fabric/26.1.x` | `26.1.x` | `v26.1.2-0.2.4-fabric` | `25` | `0.19.2+` | `0.149.0+26.1.2` | `5.5+` | `26.1.4+` |
+| `fabric/26.2.x` | `26.2.x` | `v26.2.0-0.1.3-fabric` | `25` | `0.19.3+` | `0.154.0+26.2` | `5.5.3+` | `26.2.1+` |
 
 The original mod is a vanilla-style creature mod that adds new animals and companion interactions to the overworld.
 
@@ -96,7 +96,7 @@ Public releases of this unofficial port are available on GitHub:
 
 The current release tracks are:
 
-- `fabric/26.1.x`: `v26.1.2-0.2.3-fabric`
-- `fabric/26.2.x`: `v26.2.0-0.1.2-fabric`
+- `fabric/26.1.x`: `v26.1.2-0.2.4-fabric`
+- `fabric/26.2.x`: `v26.2.0-0.1.3-fabric`
 
 The port has been tested in-game for startup, world creation, item rendering, selected recipes, entity rendering, natural spawning, spawn eggs, selected taming/breeding flows, and several core interactions. It should still be treated as experimental until broader gameplay coverage is completed.
